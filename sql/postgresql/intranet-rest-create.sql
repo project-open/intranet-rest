@@ -487,5 +487,35 @@ SELECT acs_permission__grant_permission(
 
 
 
+----------------------------------------------------------------------
+-- Permission "Report"
+----------------------------------------------------------------------
 
+-- Create a report showing all hours logged by
+-- the current user today.
+--
+SELECT im_report_new (
+	'REST Object Permissions',					-- report_name
+	'rest_object_permissions',					-- report_code
+	'intranet-rest',						-- package_key
+	110,								-- report_sort_order
+	(select menu_id from im_menus where label = 'reporting-rest'),	-- parent_menu_id
+'
+select	grantee_id, privilege
+from	acs_permissions
+where	object_id = %object_id%
+'
+);
+
+update im_reports 
+set report_description = '
+Returns all permissions define for one object.
+'
+where report_code = 'rest_object_permissions';
+
+SELECT acs_permission__grant_permission(
+	(select menu_id from im_menus where label = 'rest_object_permissions'),
+	(select group_id from groups where group_name = 'Employees'),
+	'read'
+);
 
