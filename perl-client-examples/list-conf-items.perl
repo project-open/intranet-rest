@@ -108,7 +108,10 @@ sub list_hdl_start{
 # Just print out the tag
 sub list_hdl_end{
     my ($p, $elt) = @_;
-    list_process_conf_item($list_message) if $elt eq 'object_id' && $list_message && $list_message->{'_str'} =~ /\S/;
+    if ($elt eq 'object_id' && $list_message && $list_message->{'_str'} =~ /\S/) {
+	process_conf_item($list_message);
+	process_permissions($list_message);
+    }
 }
 
 # Handle characters: Append them to the "_str" field
@@ -119,13 +122,14 @@ sub list_hdl_char {
 
 
 
+
 # -------------------------------------------------------
 # Deal with a single configuration item returned from the list
 # This procedure is called from the list_hdl_end when encountering
 # an end-tag
 # -------------------------------------------------------
 
-sub list_process_conf_item {
+sub process_conf_item {
     my $list_atts = shift;
     $list_atts->{'_str'} =~ s/\n//g;
 
@@ -152,10 +156,6 @@ sub list_process_conf_item {
     $body =  $item_response->content;
     print "list-conf-items.perl: HTTP body=$body\n" if ($debug > 8);
 
-    # Write the body into an XML file
-    open(F,"> $conf_item_id.xml");
-    print F $body;
-    close(F);
 
     # -------------------------------------------------------
     # Creates a XML parser object with a number of event handlers
@@ -212,6 +212,96 @@ sub item_hdl_end{
 
     undef $item_message;
 }
+
+
+
+
+
+# -------------------------------------------------------
+# Retreive permissions for Conf Items
+# -------------------------------------------------------
+
+sub process_permissions {
+    my $list_atts = shift;
+    $list_atts->{'_str'} =~ s/\n//g;
+
+    $conf_item_name = $list_atts->{'_str'};
+    $conf_item_id = $list_atts->{'id'};
+    print "list-conf-items.perl: conf_item_id=$conf_item_id, conf_item_name=$conf_item_name\n";
+
+    # Get the XML for the project
+    $perm_ua = LWP::UserAgent->new;
+    $perm_req = HTTP::Request->new(GET => "$rest_server/intranet-rest/im_conf_item/$conf_item_id");
+    $perm_req->authorization_basic($rest_email, $rest_password);
+    $perm_response = $perm_ua->request($perm_req);
+
+    # Extract return_code (200, ...), headers and body from the response
+    print $perm_response->as_string if ($debug > 8);
+    $code = $perm_response->code if ($debug > 0);
+    print "list-conf-items.perl: HTTP return_code=$code\n" if ($debug > 0);
+    $headers = $perm_response->headers_as_string;
+    print "list-conf-items.perl: HTTP headers=$headers\n" if ($debug > 7);
+    $body =  $perm_response->content;
+    print "list-conf-items.perl: HTTP body=$body\n" if ($debug > 8);
+
+    # -------------------------------------------------------
+    # Creates a XML parser object with a number of event handlers
+
+    my $perm_parser = new XML::Parser ( Handlers => {
+	Start   => \&perm_hdl_start,
+	End     => \&perm_hdl_end,
+	Char    => \&perm_hdl_char,
+	Default => \&hdl_default,
+    });
+
+    my $perm_message;			# Hashref containing infos on a message
+    $perm_parser->parse($body);		# Parse the message
+    undef $perm_message;
+}
+
+
+# Handle the start of a tag.
+# Store the tag's attributes into "message".
+# Create a reserved field "_str" which will contain the strings of the tag.
+sub perm_hdl_start{
+    my ($p, $elt, %perm_atts) = @_;
+    # return unless $elt eq 'object_id';  # We're only interrested in what's said
+    $perm_atts{'var'} = $elt;
+    $perm_atts{'_str'} = '';
+    $perm_message = \%perm_atts; 
+}
+
+# Handle characters: Append them to the "_str" field
+sub perm_hdl_char {
+    my ($p, $str) = @_;
+    $perm_message->{'_str'} .= $str;
+}
+
+# Handle the end of a tag.
+# Store the value into the $conf_item hash ref
+sub perm_hdl_end{
+    my ($p, $elt) = @_;
+
+    $perm_message->{'_str'} =~ s/\n//g;
+    if (!exists $perm_message->{'_str'}) { return; }
+    if (!exists $perm_message->{'var'}) { return; }
+
+    $str = $perm_message->{'_str'};
+    $var = $perm_message->{'var'};
+
+    # Store the value into the $conf_item hash ref
+    print "list-conf-items.perl: id=$conf_item_id, $var=$str\n" if ($debug > 1);
+
+#    if ("" ne $str) {
+#	$list_conf_items{$conf_item_id}{$var} = $str;
+#    }
+
+    undef $item_message;
+}
+
+
+
+
 
 
 # -------------------------------------------------------
