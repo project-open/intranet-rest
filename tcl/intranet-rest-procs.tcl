@@ -1853,6 +1853,7 @@ ad_proc -public im_rest_valid_sql {
 	cond {val <> val}
 	cond {val != val}
 	cond {val is null}
+	cond {val is not null}
 	cond {val in \( val \)}
 	val  {val , val}
 	val {[0-9]+}
