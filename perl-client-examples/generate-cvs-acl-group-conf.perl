@@ -37,18 +37,10 @@ my $now = `/bin/date +\%Y-\%m-\%d:\%H.\%M`;
 
 # benbigboss/ben is a default user @ demo.project-open.net...
 #
+my $rest_server = "demo.project-open.net";
+my $rest_email = "bbigboss\@tigerpond.com";
+my $rest_password = "ben";
 
-    my $rest_server = "demo.project-open.net";
-    my $rest_server = "192.168.21.128";
-    my $rest_email = "bbigboss\@tigerpond.com";
-    my $rest_password = "ben";
-
-#if (1==1) {
-#} else {
-#    my $rest_server = "www.project-open.org";
-#    my $rest_email = "frank.bergmann\@project-open.com";
-#    my $rest_password = "santa.anna";
-#}
 
 # Initialize a hash group_name => List of users#
 # We will use this hash to generate the "groups" CVS ACL file.
