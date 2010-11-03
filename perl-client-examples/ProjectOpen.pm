@@ -115,7 +115,7 @@ sub _http_request {
     my $req = HTTP::Request->new(GET => $uri);
     $req->authorization_basic(ProjectOpen->email, ProjectOpen->password);
     my $res = $ua->request($req);
-    carp sprint STDERRf "ProjectOpen: request: HTTP request failed: %s", 
+    carp sprintf "ProjectOpen: request: HTTP request failed: %s", 
         $res->status_line unless $res->is_success;
 
     # print STDERR sprintf "ProjectOpen.pm: content = %s\n", $res->content;
