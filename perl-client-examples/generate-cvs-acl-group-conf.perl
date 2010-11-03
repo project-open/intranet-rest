@@ -38,8 +38,6 @@ my $now = `/bin/date +\%Y-\%m-\%d:\%H.\%M`;
 # benbigboss/ben is a default user @ demo.project-open.net...
 #
 my $rest_server = "demo.project-open.net";
-my $rest_server = "192.168.21.128";
-
 my $rest_email = "bbigboss\@tigerpond.com";
 my $rest_password = "ben";
 
