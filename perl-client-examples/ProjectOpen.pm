@@ -87,9 +87,7 @@ sub new {
 
     # Print out some debug information
     my $debug = $class->debug;
-    print sprintf "ProjectOpen: new: host=%s\n", $class->host if ($debug > 0);
-    print sprintf "ProjectOpen: new: email=%s\n",$class->email if ($debug > 0);
-    print sprintf "ProjectOpen: new: password=%s\n", $class->password if ($debug > 0);
+    print STDERR sprintf "ProjectOpen: new: host=%s, email=%s, pwd=%s\n", $class->host, $class->email, $class->password if ($debug > 0);
 
     return $class;
 }
@@ -109,16 +107,18 @@ sub _http_request {
 
     # Show some debug messages
     my $debug = ProjectOpen->debug;
-    print sprintf "ProjectOpen: request: uri=%s using email=%s, pwd=%s\n", $uri, ProjectOpen->email, ProjectOpen->password if ($debug > 3);
+    print STDERR sprintf "ProjectOpen: request: uri=%s using email=%s, pwd=%s\n", 
+        $uri, ProjectOpen->email, ProjectOpen->password if ($debug > 3);
 
     # Perform the HTTP request. The request is authenticated using Basic Auth.
     my $ua = LWP::UserAgent->new;
     my $req = HTTP::Request->new(GET => $uri);
     $req->authorization_basic(ProjectOpen->email, ProjectOpen->password);
     my $res = $ua->request($req);
-    croak sprintf "ProjectOpen: request: HTTP request failed: %s", $res->status_line unless $res->is_success;
+    carp sprint STDERRf "ProjectOpen: request: HTTP request failed: %s", 
+        $res->status_line unless $res->is_success;
 
-    # print sprintf "ProjectOpen.pm: content = %s\n", $res->content;
+    # print STDERR sprintf "ProjectOpen.pm: content = %s\n", $res->content;
 
     # Parse the returned XML and return the result
     my $xs = XML::Simple->new();
@@ -192,6 +192,7 @@ sub get_category {
 
     # Check if we already got the value for this category_id
     # or get the value from the REST server
+    my $debug = ProjectOpen->debug;
     my $cat_cache = ProjectOpen->category_cache;
     my $cat_hash;
     if (defined $cat_cache->{$category_id}) { 
@@ -203,7 +204,7 @@ sub get_category {
 
 	# Store in cache
 	$cat_cache->{$category_id} = $cat_hash;
-	# print Dumper($cat_cache);
+	print STDERR Dumper($cat_cache) if ($debug > 5);
     }
 
     my $category = $cat_hash->{category};
