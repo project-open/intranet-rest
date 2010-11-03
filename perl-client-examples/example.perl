@@ -16,12 +16,17 @@ $debug = 1;
 
 # benbigboss/ben is a default user @ demo.project-open.net...
 #
-# $rest_server = "http://demo.project-open.net";
-# $rest_server = "192.168.21.128";
-$rest_server = "www.project-open.org";
-# $rest_email = "bbigboss\@tigerpond.com";
-$rest_email = "frank.bergmann\@project-open.com";
-$rest_password = "santa.anna";
+
+if (1==1) {
+    $rest_server = "demo.project-open.net";
+    $rest_server = "192.168.21.128";
+    $rest_email = "bbigboss\@tigerpond.com";
+    $rest_password = "ben";
+} else {
+    $rest_server = "www.project-open.org";
+    $rest_email = "frank.bergmann\@project-open.com";
+    $rest_password = "santa.anna";
+}
 
 
 # Create a generic access object to query the ]po[ HTTP server
@@ -39,7 +44,7 @@ ProjectOpen->new (
 # As a result we will receive a hash reference with user_id -> <some reference>
 # We can then take the user_id to get more information about that user.
 #
-my $user_list = ProjectOpen->get_object_list("user", "cvs_user is not null");
+my $user_list = ProjectOpen->get_object_list("user", "cvs_user is not null and cvs_user != 'anonymous'");
 print Dumper($user_list) if ($debug > 5);
 
 
