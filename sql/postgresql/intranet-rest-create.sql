@@ -538,7 +538,7 @@ SELECT im_report_new (
 '
 select	group_id
 from	group_distinct_member_map
-where	member_id = %user_id%
+where	member_id = %object_id%
 '
 );
 

@@ -26,7 +26,7 @@ use base qw/Class::Data::Inheritable Class::Accessor/;
 
 # Define class variables:
 #
-__PACKAGE__->mk_classdata("server");		# domain name of ]po[ REST server
+__PACKAGE__->mk_classdata("host");		# domain name of ]po[ REST host
 __PACKAGE__->mk_classdata("email");		# email of the user accessing
 __PACKAGE__->mk_classdata("password");		# password for email
 __PACKAGE__->mk_classdata("version");		# version of this filecurrent version number
@@ -39,7 +39,7 @@ __PACKAGE__->mk_classdata("object_cache");	# Cache for category values
 # 
 use constant DEFAULT_ARGS => (
 	"version" => "1.0.0",
-	"server" => "demo.project-open.net",
+	"host" => "demo.project-open.net",
         "email" => "bbigboss\@tigerpond.com",
 	"password" => "ben",
 	"debug" => 1
@@ -75,7 +75,7 @@ sub new {
     my $args = $class->_get_args(@_);
 
     # Write arguments into class variables
-    $class->server($args->{server});
+    $class->host($args->{host});
     $class->email($args->{email});
     $class->password($args->{password});
     $class->debug($args->{debug});
@@ -87,7 +87,7 @@ sub new {
 
     # Print out some debug information
     my $debug = $class->debug;
-    print sprintf "ProjectOpen: new: server=%s\n", $class->server if ($debug > 0);
+    print sprintf "ProjectOpen: new: host=%s\n", $class->host if ($debug > 0);
     print sprintf "ProjectOpen: new: email=%s\n",$class->email if ($debug > 0);
     print sprintf "ProjectOpen: new: password=%s\n", $class->password if ($debug > 0);
 
@@ -98,22 +98,18 @@ sub new {
 # Low-level HTTP request to retrieve an XML page from ]project-open[.
 # Higher-level procedures will use this procecure to retreive specific
 # objects.
-# Example: http_request("/intranet-rest/im_conf_item");
+# Example: _http_request("/intranet-rest/im_conf_item");
 # Parameters:
 #	self:	reference to ProjectOpen class
 #	path:	the path to the resource ('/intranet-rest/')
 #
-sub http_request {
+sub _http_request {
     my $self = shift;
-    my $path = shift;
-
-    # The URI is composed of server + path
-    my $uri = URI->new(ProjectOpen->server);
-    $uri->path($path);
+    my $uri = shift;
 
     # Show some debug messages
     my $debug = ProjectOpen->debug;
-    print sprintf "ProjectOpen: request: uri=%s using email=%s, pwd=%s\n", $uri, ProjectOpen->email, ProjectOpen->password if ($debug > 0);
+    print sprintf "ProjectOpen: request: uri=%s using email=%s, pwd=%s\n", $uri, ProjectOpen->email, ProjectOpen->password if ($debug > 3);
 
     # Perform the HTTP request. The request is authenticated using Basic Auth.
     my $ua = LWP::UserAgent->new;
@@ -121,6 +117,8 @@ sub http_request {
     $req->authorization_basic(ProjectOpen->email, ProjectOpen->password);
     my $res = $ua->request($req);
     croak sprintf "ProjectOpen: request: HTTP request failed: %s", $res->status_line unless $res->is_success;
+
+    # print sprintf "ProjectOpen.pm: content = %s\n", $res->content;
 
     # Parse the returned XML and return the result
     my $xs = XML::Simple->new();
@@ -142,9 +140,12 @@ sub get_object_list {
     my $object_type = shift;
     my $sql_query = shift;
 
-    my $uri = URI->new("/intranet-rest/$object_type");
+    my $host = ProjectOpen->host;
+    my $uri = URI->new("http://$host/intranet-rest/$object_type");
+
     if (defined $sql_query) { $uri->query_form("query" => $sql_query); }
-    return ProjectOpen->http_request($uri);
+    my $res = ProjectOpen->_http_request($uri);
+    $res = $res->{object_id};
 }
 
 
@@ -169,8 +170,9 @@ sub get_object {
  	$o_hash = $o_cache->{$object_id}; 
     } else {
 	# Get the object from the REST server
-	my $uri = URI->new("/intranet-rest/$object_type/$object_id");
-	$o_hash = ProjectOpen->http_request($uri);
+	my $host = ProjectOpen->host;
+	my $uri = URI->new("http://$host/intranet-rest/$object_type/$object_id");
+	$o_hash = ProjectOpen->_http_request($uri);
 
 	# Store in cache
 	$o_cache->{$object_id} = $o_hash;
@@ -197,7 +199,7 @@ sub get_category {
     } else {
 	# Get the category from the REST server
 	my $uri = URI->new("/intranet-rest/im_category/$category_id");
-	$cat_hash = ProjectOpen->http_request($uri);
+	$cat_hash = ProjectOpen->_http_request($uri);
 
 	# Store in cache
 	$cat_cache->{$category_id} = $cat_hash;
@@ -209,6 +211,29 @@ sub get_category {
 }
 
 
+
+# Get group memberships for a specific user.
+# The procedure returns an array of group_id -> $value hashs
+# Parameters:
+#	object_id:	ID of a ]po[ user
+#
+sub get_group_memberships {
+    my $self = shift;
+    my $object_id = shift;
+
+    # Don't cache this. These results are unlikely to be used again.
+    my $host = ProjectOpen->host;
+    my $uri = URI->new("http://$host/intranet-reporting/view");
+    $uri->query_form(
+		     "report_code" => "rest_group_membership", 
+		     "object_id" => $object_id,
+		     "format" => "xml"
+    );
+    my $membership_hash = ProjectOpen->_http_request($uri);
+    my $list = $membership_hash->{row};
+
+    return $list;
+}
 
 
 1;
