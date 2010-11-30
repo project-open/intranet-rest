@@ -788,13 +788,9 @@ ad_proc -private im_rest_get_object_type {
     # Select SQL: Pull out objects where the acs_objects.object_type 
     # is correct AND the object exists in the object type's primary table.
     # This way we avoid "dangling objects" in acs_objects and sub-types.
-    set sql "
-	select	t.$id_column as rest_oid,
-		${name_method}(t.$id_column) as object_name
-	from	$table_name t,
-		acs_objects o
-	where	t.$id_column = o.object_id and
-		o.object_type = :rest_otype
+    set sql [im_rest_object_type_select_sql -rest_otype $rest_otype -no_where_clause_p 1]
+    append sql "
+	where	o.object_type = :rest_otype
 		$where_clause
 	LIMIT $limit
     "
@@ -1556,6 +1552,7 @@ ad_proc -private im_rest_format_line {
 # ----------------------------------------------------------------------
 
 ad_proc -public im_rest_object_type_select_sql { 
+    {-no_where_clause_p 0}
     -rest_otype:required
 } {
     Calculates the SQL statement to extract the value for an object
@@ -1636,11 +1633,15 @@ ad_proc -public im_rest_object_type_select_sql {
     set sql "
 	select	o.*,
 		o.object_id as rest_oid,
+		acs_object__name(o.object_id) as object_name,
 		[join $selects ",\n\t\t"]
 	from	acs_objects o
 		[join $froms "\n\t\t"]
-	where	o.object_id = :rest_oid
     "
+    if {!$no_where_clause_p} { append sql "
+	where	o.object_id = :rest_oid
+    "}
+
     return $sql
 }
 
