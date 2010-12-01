@@ -790,13 +790,19 @@ ad_proc -private im_rest_get_object_type {
     # This way we avoid "dangling objects" in acs_objects and sub-types.
     set sql [im_rest_object_type_select_sql -rest_otype $rest_otype -no_where_clause_p 1]
     append sql "
-	where	o.object_type = :rest_otype
-		$where_clause
+	where	o.object_type = :rest_otype and
+		o.object_id in (
+			select  t.$id_column as rest_oid
+			from    $table_name t
+		)
 	LIMIT $limit
     "
 
     set result ""
     db_foreach objects $sql {
+
+	# Skip objects with empty object name
+	if {"" == $object_name} { continue }
 
 	# Check permissions
 	set read_p $rest_otype_read_all_p
