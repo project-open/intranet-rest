@@ -23,11 +23,12 @@ ad_register_proc POST /intranet-rest/* im_rest_call_post
 ad_proc -private im_rest_version {} {
     Returns the current server version of the REST interface.
     Please see www.project-open.org/documentation/rest_version_history
+    <li>1.5.1 (2010-12-01): Fixed bug with generic objects, improved rendering of some fields
     <li>1.5 (2010-11-03): Added rest_object_permissions and rest_group_memberships reports
     <li>1.4 (2010-06-11): Added /intranet-rest/dynfield-widget-values
     <li>1.3 - Base version
 } {
-    return "1.5"
+    return "1.5.1"
 }
 
 # -------------------------------------------------------
@@ -1493,7 +1494,7 @@ ad_proc -private im_rest_format_line {
 		xml { set href "$base_url/im_office/$value" }
 	    }
 	}
-	im_invoice.project_id - im_timesheet_invoice.project_id - im_trans_invoice.project_id - im_project.project_id - im_project.parent_id - im_timesheet_task.project_id - im_timesheet_task.parent_id - im_expense.project_id - im_ticket.project_id - im_ticket.parent_id - im_trans_task.project_id - im_invoice_item.project_id {
+	im_invoice.project_id - im_timesheet_invoice.project_id - im_trans_invoice.project_id - im_project.project_id - im_project.parent_id - im_project.program_id - im_timesheet_task.project_id - im_timesheet_task.parent_id - im_expense.project_id - im_ticket.project_id - im_ticket.parent_id - im_trans_task.project_id - im_invoice_item.project_id {
 	    set project_name [util_memoize [list db_string cname3 "select project_name from im_projects where project_id=$rest_oid" -default $value]]
 	    switch $format {
 		html { set value "<a href=\"$base_url/im_project/$value?format=html\">$project_name</a>" }
