@@ -1480,21 +1480,21 @@ ad_proc -private im_rest_format_line {
     set href ""
     switch "${rest_otype}.${column}" {
 	im_project.company_id - im_timesheet_task.company_id - im_invoice.customer_id - im_timesheet_invoice.customer_id - im_trans_invoice.customer_id - im_invoice.provider_id - im_timesheet_invoice.provider_id - im_trans_invoice.provider_id - im_expense.customer_id - im_office.company_id - im_ticket.company_id {
-	    set company_name [util_memoize [list db_string cname "select company_name from im_companies where company_id=$rest_oid" -default $value]]
+	    set company_name [util_memoize [list db_string cname1 "select company_name from im_companies where company_id=$rest_oid" -default $value]]
 	    switch $format {
 		html { set value "<a href=\"$base_url/im_company/$value?format=html\">$company_name</a>" }
 		xml { set href "$base_url/im_company/$value" }
 	    }
 	}
 	im_company.main_office_id - im_invoice.invoice_office_id - im_timesheet_invoice.invoice_office_id - im_trans_invoice.invoice_office_id {
-	    set office_name [util_memoize [list db_string cname "select office_name from im_offices where office_id=$rest_oid" -default $value]]
+	    set office_name [util_memoize [list db_string cname2 "select office_name from im_offices where office_id=$rest_oid" -default $value]]
 	    switch $format {
 		html { set value "<a href=\"$base_url/im_office/$value?format=html\">$office_name</a>" }
 		xml { set href "$base_url/im_office/$value" }
 	    }
 	}
 	im_invoice.project_id - im_timesheet_invoice.project_id - im_trans_invoice.project_id - im_project.project_id - im_project.parent_id - im_timesheet_task.project_id - im_timesheet_task.parent_id - im_expense.project_id - im_ticket.project_id - im_ticket.parent_id - im_trans_task.project_id - im_invoice_item.project_id {
-	    set project_name [util_memoize [list db_string cname "select project_name from im_projects where project_id=$rest_oid" -default $value]]
+	    set project_name [util_memoize [list db_string cname3 "select project_name from im_projects where project_id=$rest_oid" -default $value]]
 	    switch $format {
 		html { set value "<a href=\"$base_url/im_project/$value?format=html\">$project_name</a>" }
 		xml { set href "$base_url/im_project/$value" }
@@ -1516,21 +1516,24 @@ ad_proc -private im_rest_format_line {
 
 	}
 	im_invoice.cost_center_id - im_timesheet_invoice.cost_center_id - im_trans_invoice.cost_center_id - im_expense.cost_center_id - im_timesheet_task.cost_center_id {
-	    set cc_name [util_memoize [list db_string cname "select im_cost_center_name_from_id($value)" -default $value]]
+	    if {"" == $value} { set value 0 }
+	    set cc_name [util_memoize [list db_string cname4 "select im_cost_center_name_from_id($value)" -default $value]]
 	    switch $format {
 		html { set value "<a href=\"$base_url/im_cost_center/$value?format=html\">$cc_name</a>" }
 		xml { set href "$base_url/im_cost_center/$value" }
 	    }
 	}
 	im_timesheet_task.material_id {
-	    set material_name [util_memoize [list db_string cname "select im_material_name_from_id($value)" -default $value]]
+	    if {"" == $value} { set value 0 }
+	    set material_name [util_memoize [list db_string cname5 "select im_material_name_from_id($value)" -default $value]]
 	    switch $format {
 		html { set value "<a href=\"$base_url/im_material/$value?format=html\">$material_name</a>" }
 		xml { set href "$base_url/im_material/$value" }
 	    }
 	}
-	im_invoice_item.invoice_id  {
-	    set invoice_name [util_memoize [list db_string cname "select cost_name from im_costs where cost_id = $value" -default $value]]
+	im_invoice_item.invoice_id - im_timesheet_task.invoice_id {
+	    if {"" == $value} { set value 0 }
+	    set invoice_name [util_memoize [list db_string cname5 "select cost_name from im_costs where cost_id = $value" -default $value]]
 	    switch $format {
 		html { set value "<a href=\"$base_url/im_invoice/$value?format=html\">$invoice_name</a>" }
 		xml { set href "$base_url/im_invoice/$value" }
