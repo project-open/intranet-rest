@@ -23,12 +23,13 @@ ad_register_proc POST /intranet-rest/* im_rest_call_post
 ad_proc -private im_rest_version {} {
     Returns the current server version of the REST interface.
     Please see www.project-open.org/documentation/rest_version_history
+    <li>1.5.2 (2010-12-21): Fixed bug of not applying where_query
     <li>1.5.1 (2010-12-01): Fixed bug with generic objects, improved rendering of some fields
     <li>1.5 (2010-11-03): Added rest_object_permissions and rest_group_memberships reports
     <li>1.4 (2010-06-11): Added /intranet-rest/dynfield-widget-values
     <li>1.3 - Base version
 } {
-    return "1.5.1"
+    return "1.5.2"
 }
 
 # -------------------------------------------------------
