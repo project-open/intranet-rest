@@ -796,6 +796,7 @@ ad_proc -private im_rest_get_object_type {
 			select  t.$id_column as rest_oid
 			from    $table_name t
 		)
+		$where_clause
 	LIMIT $limit
     "
 
