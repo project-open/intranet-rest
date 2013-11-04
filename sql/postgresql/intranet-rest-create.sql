@@ -588,7 +588,8 @@ from
 	acs_rels r
 where
 	parent.parent_id is null and
-	child.project_type_id not in (select * from im_sub_categories(81)) and
+	parent.project_status_id in (select * from im_sub_categories(76) union select * from im_sub_categories(71)) and
+	child.project_status_id not in (select * from im_sub_categories(81)) and
 	child.tree_sortkey between parent.tree_sortkey and tree_right(parent.tree_sortkey) and
 	r.object_id_one = parent.project_id and
 	r.object_id_two = %user_id%
