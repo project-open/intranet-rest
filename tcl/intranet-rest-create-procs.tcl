@@ -79,7 +79,7 @@ ad_proc -private im_rest_post_object_type_im_project {
     }
 
     if {[catch {
-	set rest_oid [project::new \
+	set rest_oid [im_project::new \
 			-creation_user		$user_id \
 			-context_id		"" \
 			-project_name		$hash_array(project_name) \
@@ -512,7 +512,7 @@ ad_proc -private im_rest_post_object_type_im_company {
 	set main_office_id [db_string office_exists "select office_id from im_offices where office_name = :office_name" -default ""]
 	
 	if {"" == $main_office_id} {
-	    set main_office_id [office::new \
+	    set main_office_id [im_office::new \
 				    -office_name $office_name \
 				    -office_path $office_path \
 				    -office_type_id $office_type_id \
