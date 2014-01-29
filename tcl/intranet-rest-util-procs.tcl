@@ -195,7 +195,7 @@ ad_proc -private im_rest_authenticate {
 
     # Check if the token fits the user
     if {"" != $token_user_id && "" != $token_token} {
-	if {![im_valid_auto_login_p -user_id $token_user_id -auto_login $token_token]} {
+	if {![im_valid_auto_login_p -user_id $token_user_id -auto_login $token_token -check_user_requires_manual_login_p 0]} {
 	    set token_user_id ""
 	}
     }
@@ -210,6 +210,9 @@ ad_proc -private im_rest_authenticate {
     if {[regexp {^([a-zA-Z_]+)\ (.*)$} $basic_auth match method userpass_base64]} {
 	set basic_auth_userpass [base64::decode $userpass_base64]
 	regexp {^([^\:]+)\:(.*)$} $basic_auth_userpass match basic_auth_username basic_auth_password
+	if {$debug} { ns_log Notice "im_rest_authenticate: basic_auth: basic_auth_username=$basic_auth_username, basic_auth_password=$basic_auth_password" }
+    } else {
+	ns_log Error "im_rest_authenticate: basic_auth: basic_auth=$basic_auth does not match with regexp"
     }
     set basic_auth_user_id [db_string userid "select user_id from users where lower(username) = lower(:basic_auth_username)" -default ""]
     if {"" == $basic_auth_user_id} {
