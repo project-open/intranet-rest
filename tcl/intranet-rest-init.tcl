@@ -10,10 +10,10 @@ ad_library {
 
 
 # Register handler procedures for the various HTTP methods
-ad_register_proc GET /intranet-rest/* im_rest_call_get
-ad_register_proc POST /intranet-rest/* im_rest_call_post
-ad_register_proc PUT /intranet-rest/* im_rest_call_put
-ad_register_proc DELETE /intranet-rest/* im_rest_call_delete
+ns_register_proc GET /intranet-rest/* im_rest_call_get
+ns_register_proc POST /intranet-rest/* im_rest_call_post
+ns_register_proc PUT /intranet-rest/* im_rest_call_put
+ns_register_proc DELETE /intranet-rest/* im_rest_call_delete
 
 
 # Create a global cache for im_rest entries
