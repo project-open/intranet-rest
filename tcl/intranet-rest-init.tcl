@@ -10,11 +10,15 @@ ad_library {
 
 
 # Register handler procedures for the various HTTP methods
-ns_register_proc GET /intranet-rest/* im_rest_call_get
-ns_register_proc POST /intranet-rest/* im_rest_call_post
-ns_register_proc PUT /intranet-rest/* im_rest_call_put
-ns_register_proc DELETE /intranet-rest/* im_rest_call_delete
+ad_register_proc GET /intranet-rest/* im_rest_call_get
+ad_register_proc POST /intranet-rest/* im_rest_call_post
 
+if {[catch {
+    ad_register_proc PUT /intranet-rest/* im_rest_call_put
+    ad_register_proc DELETE /intranet-rest/* im_rest_call_delete
+} err_msg]} {
+    ns_log Error "intranet-rest-init: Error initializing PUT or DELETE verbs: $err_msg"
+}
 
 # Create a global cache for im_rest entries
 # The cache is bound by global timeout of 1 hour currently.
