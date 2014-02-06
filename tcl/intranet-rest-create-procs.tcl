@@ -1240,36 +1240,31 @@ ad_proc -private im_rest_post_object_im_hour {
 
     # Extract a key-value list of variables from XML or JSON POST request
     array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
-    ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
+    ns_log Notice "im_rest_post_object_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
     foreach key [array names hash_array] {
 	set value $hash_array($key)
-	ns_log Notice "im_rest_post_object_type_$rest_otype: key=$key, value=$value"
 	set $key $value
     }
 
     set hours $hash_array(hours)
     set hour_id $hash_array(hour_id)
     if {"" == $hours || 0.0 == $hours} {
-	
 	# Delete the hour instead of updating it.
 	# im_hours is not a real object, so we don't need to
 	# cleanup acs_objects.
 	ns_log Notice "im_rest_post_object_im_hour: deleting hours because hours='$hours', hour_id=$hour_id"
 	db_dml del_hours "delete from im_hours where hour_id = :hour_id"
-
     } else {
-
-
 	# Update the object. This routine will return a HTTP error in case 
 	# of a database constraint violation
-	ns_log Notice "im_rest_post_object_im_hour: updating hours=$hours with hour_id=$hour_id"
+	ns_log Notice "im_rest_post_object_im_hour: Before updating hours=$hours with hour_id=$hour_id"
 	im_rest_object_type_update_sql \
 	    -rest_otype $rest_otype \
 	    -rest_oid $rest_oid \
 	    -hash_array [array get hash_array]
-
+	ns_log Notice "im_rest_post_object_im_hour: After updating hours=$hours with hour_id=$hour_id"
     }
 
     # The update was successful - return a suitable message.
@@ -1283,7 +1278,21 @@ ad_proc -private im_rest_post_object_im_hour {
 		</table>[im_footer]
 	    "
 	}
-	xml {  doc_return 200 "text/xml" "<?xml version='1.0'?>\n<object_id id=\"$rest_oid\">$rest_oid</object_id>\n" }
+	xml {  
+	    doc_return 200 "text/xml" "<?xml version='1.0'?>\n<object_id id=\"$rest_oid\">$rest_oid</object_id>\n" 
+	}
+	json {  
+	    # doc_return 200 "text/html" "{\"success\": true,\n\"object_id\": $rest_oid}"
+	    set data_list [list]
+	    foreach key [array names hash_array] {
+		set value $hash_array($key)
+		lappend data_list "\"$key\": \"[im_quotejson $value]\""
+	    }
+
+	    set data "\[{[join $data_list ", "]}\]"
+	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
+	    doc_return 200 "text/html" $result
+	}
     }
 }
 
