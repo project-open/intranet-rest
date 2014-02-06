@@ -212,7 +212,7 @@ ad_proc -private im_rest_call {
 				   ]
 		    }
 		    im_hour {
-			return [im_rest_get_im_hour \
+			return [im_rest_get_im_hours \
 				    -format $format \
 				    -user_id $user_id \
 				    -rest_otype $rest_otype \
@@ -752,83 +752,6 @@ ad_proc -private im_rest_get_im_invoice_item {
 
 }
 
-ad_proc -private im_rest_get_im_hour {
-    { -format "xml" }
-    { -user_id 0 }
-    { -rest_otype "" }
-    { -rest_oid 0 }
-    { -query_hash_pairs {} }
-} {
-    Handler for GET rest calls to retreive timesheet hours
-} {
-    ns_log Notice "im_rest_get_im_hour: format=$format, user_id=$user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
-
-    # Check that rest_oid is an integer
-    im_security_alert_check_integer -location "im_rest_get_im_hour" -value $rest_oid
-
-    # -------------------------------------------------------
-    # Get the SQL to extract all values from the object
-    set sql "select * from im_hours where hour_id = :rest_oid"
-
-    # Execute the sql. As a result we get a result_hash with keys 
-    # corresponding to table columns and values 
-    array set result_hash {}
-    db_with_handle db {
-	set selection [db_exec select $db query $sql 1]
-	while { [db_getrow $db $selection] } {
-	    set col_names [ad_ns_set_keys $selection]
-	    set this_result [list]
-	    for { set i 0 } { $i < [ns_set size $selection] } { incr i } {
-		set var [lindex $col_names $i]
-		set val [ns_set value $selection $i]
-		set result_hash($var) $val
-	    }
-	}
-    }
-    db_release_unused_handles
-
-    if {{} == [array get result_hash]} { return [im_rest_error -format $format -http_status 404 -message "Timesheet Hour: Did not find object '$rest_otype' with the ID '$rest_oid'."] }
-
-    # -------------------------------------------------------
-    # Format the result for one of the supported formats
-    set result ""
-    foreach result_key [array names result_hash] {
-	set result_val $result_hash($result_key)
-	append result [im_rest_format_line \
-			   -column $result_key \
-			   -value $result_val \
-			   -format $format \
-			   -rest_otype $rest_otype \
-	]
-    }
-	
-    switch $format {
-	html { 
-	    set page_title "$rest_otype: $rest_oid"
-	    doc_return 200 "text/html" "
-		[im_header $page_title [im_rest_header_extra_stuff]][im_navbar]<table>
-		<tr class=rowtitle><td class=rowtitle>Attribute</td><td class=rowtitle>Value</td></tr>$result
-		</table>[im_footer]
-	    "
-	    return
-	}
-	xml {  
-	    doc_return 200 "text/xml" "<?xml version='1.0'?><$rest_otype>$result</$rest_otype>" 
-	    return
-	}
-	json {  
-	    doc_return 200 "text/html" "{object_type: \"$rest_otype\",\n$result\n}"
-	    return
-	}
-	default {
-	     ad_return_complaint 1 "Invalid format5: '$format'"
-	}
-    }
-  
-    return
-
-}
-
 
 ad_proc -private im_rest_get_object_type {
     { -format "xml" }
@@ -1184,14 +1107,16 @@ ad_proc -private im_rest_get_im_hours {
     { -format "xml" }
     { -user_id 0 }
     { -rest_otype "" }
+    { -rest_oid "" }
     { -query_hash_pairs {} }
     { -debug 0 }
 } {
     Handler for GET rest calls on timesheet hours
 } {
-    ns_log Notice "im_rest_get_hours: format=$format, user_id=$user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_get_im_hours: format=$format, user_id=$user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
 
     array set query_hash $query_hash_pairs
+    if {"" != $rest_oid} { set query_hash(hour_id) $rest_oid }
     set base_url "[im_rest_system_url]/intranet-rest"
 
     # Permissions:
