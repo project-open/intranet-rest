@@ -1581,16 +1581,61 @@ ad_proc -private im_rest_delete_object {
 	}
     }
 
+    # Destroy the object. Try first with an object_type_nuke TCL procedure.
+    set destroyed_err_msg ""
     if {[catch {
 	set nuke_tcl [list "${nuke_otype}_nuke" -current_user_id $user_id $rest_oid]
 	ns_log Notice "im_rest_delete_object: nuke_tcl=$nuke_tcl"
 	eval $nuke_tcl
-
     } err_msg]} {
-	im_rest_error -format $format -http_status 404 -message "DELETE for object #$rest_oid of type '$rest_otype' returned an error: $err_msg"
+	set destroyed_p 0
+	append destroyed_err_msg "$err_msg\n"
+    } else {
+	set destroyed_p 1
     }
 
-    # The update was successful - return a suitable message.
+    # Then try with a object_type__delete PL/SQL procedure
+    if {!$destroyed_p} {
+	if {[catch {
+
+	    set destructor_name "${nuke_otype}__delete"
+	    set destructor_exists_p [util_memoize [list db_string destructor_exists "select count(*) from pg_proc where lower(proname) = '$destructor_name'"]]
+	    if {$destructor_exists_p} {
+		db_string destruct_object "select $destructor_name($rest_oid) from dual"
+	    }
+	    set destroyed_p 1
+
+	} err_msg]} {
+	    append destroyed_err_msg "$err_msg\n"
+	}
+    }
+
+    # Try to destruct the object
+    if {!$destroyed_p} {
+	im_rest_error -format $format -http_status 404 -message "DELETE for object #$rest_oid of type \"$rest_otype\" created errors: $destroyed_err_msg"
+    }	
+
+
+
+    # Try to destruct the object
+    if {[catch {
+	set destructor_name "${nuke_otype}__delete"
+	set destructor_exists_p [util_memoize [list db_string destructor_exists "select count(*) from pg_proc where lower(proname) = '$destructor_name'"]]
+	if {$destructor_exists_p} {
+	    db_string destruct_object "select $destructor_name($rest_oid) from dual"
+	} else {
+	    set nuke_tcl [list "${nuke_otype}_nuke" -current_user_id $user_id $rest_oid]
+	    ns_log Notice "im_rest_delete_object: nuke_tcl=$nuke_tcl"
+	    eval $nuke_tcl
+	}
+    } err_msg]} {
+	im_rest_error -format $format -http_status 404 -message "DELETE for object #$rest_oid of type \"$rest_otype\" returned an error: $err_msg"
+    }	
+
+
+
+
+    # The delete was successful - return a suitable message.
     switch $format {
 	html { 
 	    set page_title "object_type: $rest_otype"
@@ -1602,17 +1647,7 @@ ad_proc -private im_rest_delete_object {
 	    "
 	}
 	json {
-	    # Empty data: The empty array is necessary for Sencha in order to call callbacks
-	    # without error. However, adding data here will create empty records in the store later,
-	    # so the array needs to be empty.
-	    set data_list [list]
-	    foreach key [array names hash_array] {
-		set value $hash_array($key)
-		lappend data_list "\"$key\": \"[im_quotejson $value]\""
-	    }
-
-	    set data "\[{[join $data_list ", "]}\]"
-	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
+	    set result "{\"success\": \"true\",\"message\": \"Object deleted\"}"
 	    doc_return 200 "text/html" $result
 	}
 	xml {  
