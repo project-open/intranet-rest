@@ -613,11 +613,17 @@ ad_proc -public im_rest_object_type_select_sql {
 
 ad_proc -public im_rest_object_type_columns { 
     {-deref_p 0}
+    {-include_acs_objects_p 1}
     -rest_otype:required
 } {
     Returns a list of all columns for a given object type.
 } {
     set super_types [im_object_super_types -object_type $rest_otype]
+    if {!$include_acs_objects_p} {
+	# Exclude base tables if not necessary
+	set super_types [lsearch -inline -all -not -exact $super_types acs_object]
+	set super_types [lsearch -inline -all -not -exact $super_types im_biz_object]
+    }
 
     # Get a list of dereferencing functions
     if {$deref_p} {
