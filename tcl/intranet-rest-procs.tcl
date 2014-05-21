@@ -392,6 +392,7 @@ ad_proc -private im_rest_get_object {
 
     # Check that rest_oid is an integer
     im_security_alert_check_integer -location "im_rest_get_object: rest_oid" -value $rest_oid
+    im_security_alert_check_alphanum -location "im_rest_get_object: rest_otype" -value $rest_otype
 
     # Check if the deref_p parameter was set
     array set query_hash $query_hash_pairs
@@ -766,6 +767,9 @@ ad_proc -private im_rest_get_object_type {
 } {
     set current_user_id $user_id
     ns_log Notice "im_rest_get_object_type: format=$format, user_id=$current_user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
+    im_security_alert_check_integer -location "im_rest_get_object_type: rest_oid" -value $rest_oid
+    im_security_alert_check_alphanum -location "im_rest_get_object_type: rest_otype" -value $rest_otype
+
     array set query_hash $query_hash_pairs
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = '$rest_otype'" -default 0]]
     set rest_columns [im_rest_get_rest_columns $query_hash_pairs]
@@ -1480,6 +1484,8 @@ ad_proc -private im_rest_post_object_type {
     Handler for POST rest calls to an object type - create a new object.
 } {
     ns_log Notice "im_rest_post_object_type: format=$format, user_id=$user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
+    im_security_alert_check_integer -location "im_rest_get_object: rest_oid" -value $rest_oid
+    im_security_alert_check_alphanum -location "im_rest_get_object: rest_otype" -value $rest_otype
 
     set base_url "[im_rest_system_url]/intranet-rest"
 
