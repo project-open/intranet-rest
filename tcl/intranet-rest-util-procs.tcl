@@ -275,6 +275,7 @@ ad_proc -private im_rest_format_line {
     set base_url "[im_rest_system_url]/intranet-rest"
     set rest_oid $value
     if {"" == $rest_oid} { set rest_oid 0 }
+    if {[im_security_alert_check_integer -location im_rest_format_line -value $rest_oid]} { set rest_oid 0 }
 
     # Transformation without knowing the rest_otype
     set href ""
