@@ -220,6 +220,15 @@ ad_proc -private im_rest_call {
 				    -query_hash_pairs $query_hash_pairs \
 				   ]
 		    }
+		    im_hour_interval {
+			return [im_rest_get_im_hour_intervals \
+				    -format $format \
+				    -user_id $user_id \
+				    -rest_otype $rest_otype \
+				    -rest_oid $rest_oid \
+				    -query_hash_pairs $query_hash_pairs \
+				   ]
+		    }
 		    default {
 			# Return generic object information
 			return [im_rest_get_object \
@@ -263,6 +272,14 @@ ad_proc -private im_rest_call {
 		    }
 		    im_hour {
 			return [im_rest_get_im_hours \
+				    -format $format \
+				    -user_id $user_id \
+				    -rest_otype $rest_otype \
+				    -query_hash_pairs $query_hash_pairs \
+				   ]
+		    }
+		    im_hour_interval {
+			return [im_rest_get_im_hour_intervals \
 				    -format $format \
 				    -user_id $user_id \
 				    -rest_otype $rest_otype \
@@ -1189,7 +1206,6 @@ ad_proc -private im_rest_get_im_hours {
 
 	# Check permissions
 	set read_p $rest_otype_read_all_p
-	set read_p 1
 	if {!$read_p} { continue }
 
 	set url "$base_url/$rest_otype/$rest_oid"
@@ -1235,6 +1251,135 @@ ad_proc -private im_rest_get_im_hours {
 	json {  
 	    # Deal with different JSON variants for different AJAX frameworks
 	    set result "{\"success\": true,\n\"message\": \"im_rest_get_im_hours: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
+	    im_rest_doc_return 200 "text/html" $result
+	    return
+	}
+    }
+    return
+}
+
+
+
+ad_proc -private im_rest_get_im_hour_intervals {
+    { -format "xml" }
+    { -user_id 0 }
+    { -rest_otype "" }
+    { -rest_oid "" }
+    { -query_hash_pairs {} }
+    { -debug 0 }
+} {
+    Handler for GET rest calls on timesheet hour intervals
+} {
+    ns_log Notice "im_rest_get_im_hour_intervals: format=$format, user_id=$user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
+
+    array set query_hash $query_hash_pairs
+    if {"" != $rest_oid} { set query_hash(interval_id) $rest_oid }
+    set base_url "[im_rest_system_url]/intranet-rest"
+
+    # Permissions:
+    # A user can normally read only his own hours,
+    # unless he's got the view_hours_all privilege or explicitely 
+    # the perms on the im_hour_interval object type
+    set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_hour_interval'" -default 0]]
+    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $user_id -privilege "read"]
+    if {[im_permission $user_id "view_hours_all"]} { set rest_otype_read_all_p 1 }
+
+    set owner_perm_sql "and h.user_id = :user_id"
+    if {$rest_otype_read_all_p} { set owner_perm_sql "" }
+
+    # -------------------------------------------------------
+    # Check if there is a where clause specified in the URL and validate the clause.
+    set where_clause ""
+    if {[info exists query_hash(query)]} { set where_clause $query_hash(query)}
+
+    # Determine the list of valid columns for the object type
+    set valid_vars {interval_id user_id project_id interval_start interval_end note internal_note activity_id material_id}
+
+
+    # -------------------------------------------------------
+    # Check if there are "valid_vars" specified in the HTTP header
+    # and add these vars to the SQL clause
+    set where_clause_list [list]
+    foreach v $valid_vars {
+        if {[info exists query_hash($v)]} { lappend where_clause_list "$v=$query_hash($v)" }
+    }
+    if {"" != $where_clause && [llength $where_clause_list] > 0} { append where_clause " and " }
+    append where_clause [join $where_clause_list " and "]
+
+    # Check that the query is a valid SQL where clause
+    set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
+    if {!$valid_sql_where} {
+	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
+	return
+    }
+    if {"" != $where_clause} { set where_clause "and $where_clause" }
+
+
+
+    # Select SQL: Pull out hours.
+    set sql "
+	select	h.interval_id as rest_oid,
+		'(' || im_name_from_user_id(user_id) || ', ' || 
+			im_project_name_from_id(h.project_id) || ', ' ||
+			interval_start || ' - ' || interval_end || ')' as object_name,
+		h.*
+	from	im_hour_intervals h
+	where	1=1
+		$owner_perm_sql
+		$where_clause
+    "
+
+    # Append pagination "LIMIT $limit OFFSET $start" to the sql.
+    set unlimited_sql $sql
+    append sql [im_rest_object_type_pagination_sql -query_hash_pairs $query_hash_pairs]
+
+    set value ""
+    set result ""
+    set obj_ctr 0
+    db_foreach objects $sql {
+
+	# Check permissions
+	set read_p $rest_otype_read_all_p
+	if {!$read_p} { continue }
+
+	set url "$base_url/$rest_otype/$rest_oid"
+	switch $format {
+	    xml { append result "<object_id id=\"$rest_oid\" href=\"$url\">$object_name</object_id>\n" }
+	    html { append result "<tr><td>$rest_oid</td><td><a href=\"$url?format=html\">$object_name</a></tr>\n" }
+	    json {
+		set komma ",\n"
+		if {0 == $obj_ctr} { set komma "" }
+		set dereferenced_result ""
+		foreach v $valid_vars {
+			eval "set a $$v"
+			regsub -all {\n} $a {\n} a
+			regsub -all {\r} $a {} a
+			append dereferenced_result ", \"$v\": \"[ns_quotehtml $a]\""
+		}
+		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[ns_quotehtml $object_name]\"$dereferenced_result}" 
+	    }
+	    default {}
+	}
+	incr obj_ctr
+    }
+	
+    switch $format {
+	html { 
+	    set page_title "object_type: $rest_otype"
+	    im_rest_doc_return 200 "text/html" "
+		[im_header $page_title [im_rest_header_extra_stuff]][im_navbar]<table>
+		<tr class=rowtitle><td class=rowtitle>object_id</td><td class=rowtitle>Link</td></tr>$result
+		</table>[im_footer]
+	    " 
+	    return
+	}
+	xml {  
+	    im_rest_doc_return 200 "text/xml" "<?xml version='1.0'?>\n<object_list>\n$result</object_list>\n" 
+	    return
+	}
+	json {  
+	    # Deal with different JSON variants for different AJAX frameworks
+	    set result "{\"success\": true,\n\"message\": \"im_rest_get_im_hour_intervals: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
 	    im_rest_doc_return 200 "text/html" $result
 	    return
 	}
@@ -1317,7 +1462,6 @@ ad_proc -private im_rest_get_im_categories {
 
         # Calculate indent
         set indent [expr [string length tree_sortkey] - 8]
-        # for {set i 0} {$i < $indent} {incr i} { set category_translated "&nbsp;$category_translated" }
 
 	# Check permissions
 	set read_p $rest_otype_read_all_p

@@ -1299,6 +1299,180 @@ ad_proc -private im_rest_post_object_im_hour {
 
 
 # --------------------------------------------------------
+# im_hour_interval
+# Not an object type really, so we have to fake it here.
+# --------------------------------------------------------
+
+
+ad_proc -private im_rest_post_object_type_im_hour_interval {
+    { -format "xml" }
+    { -user_id 0 }
+    { -content "" }
+    { -rest_otype "im_hour_interval" }
+    { -rest_otype_pretty "Timesheet Hour" }
+} {
+    Create a new Timesheet Hour line and return the item_id.
+} {
+    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+
+
+    # Extract a key-value list of variables from XML or JSON POST request
+    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
+
+    # write hash values as local variables
+    foreach key [array names hash_array] {
+	set value $hash_array($key)
+	ns_log Notice "im_rest_post_object_type_$rest_otype: key=$key, value=$value"
+	set $key $value
+    }
+
+    # Check that all required variables are there
+    set required_vars { user_id project_id day hours note }
+    foreach var $required_vars {
+	if {![info exists $var]} { 
+	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
+	}
+    }
+
+    # Check for duplicate
+    set dup_sql "
+		select  count(*)
+		from    im_hour_intervals
+		where	user_id = :user_id and
+			project_id = :project_id and
+			day = :day
+    "
+    if {[db_string duplicates $dup_sql]} {
+	return [im_rest_error -format $format -http_status 406 -message "Duplicate $rest_otype_pretty: Your item already exists with the specified user, project and day."]
+    }
+
+    if {[catch {
+	set rest_oid [db_string item_id "select nextval('im_hour_intervals_seq')"]
+	db_dml new_im_hour_interval "
+		insert into im_hour_intervals (
+			interval_id,
+			user_id,
+			project_id,
+			interval_start,
+			interval_end,
+			note
+		) values (
+			:rest_oid,
+			:user_id,
+			:project_id,
+			:interval_start,
+			:interval_end,
+			:note
+		)
+	"
+    } err_msg]} {
+	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
+    }
+
+    if {[catch {
+	im_rest_object_type_update_sql \
+	    -rest_otype $rest_otype \
+	    -rest_oid $rest_oid \
+	    -hash_array [array get hash_array]
+
+    } err_msg]} {
+	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
+    }
+
+    # Not a real object, so no audit!
+    # im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+
+    set hash_array(rest_oid) $rest_oid
+    set hash_array(interval_id) $rest_oid
+    return [array get hash_array]
+}
+
+
+# --------------------------------------------------------
+# im_hour_intervals
+#
+# Update operation. This is implemented here, because
+# im_hour_interval isn't a real object
+
+ad_proc -private im_rest_post_object_im_hour_interval {
+    { -format "xml" }
+    { -user_id 0 }
+    { -rest_otype "" }
+    { -rest_oid "" }
+    { -content "" }
+    { -debug 0 }
+    { -query_hash_pairs ""}
+} {
+    Handler for POST calls on particular im_hour_interval objects.
+    im_hour_interval is not a real object type and performs a "delete" 
+    operation specifying hours=0 or hours="".
+} {
+    ns_log Notice "im_rest_post_object_im_hour_interval: rest_oid=$rest_oid"
+
+    # Extract a key-value list of variables from XML or JSON POST request
+    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    ns_log Notice "im_rest_post_object_$rest_otype: hash_array=[array get hash_array]"
+
+    # write hash values as local variables
+    foreach key [array names hash_array] {
+	set value $hash_array($key)
+	set $key $value
+    }
+
+    set hours $hash_array(hours)
+    set interval_id $hash_array(interval_id)
+    if {"" == $hours || 0.0 == $hours} {
+	# Delete the hour instead of updating it.
+	# im_hour_intervals is not a real object, so we don't need to
+	# cleanup acs_objects.
+	ns_log Notice "im_rest_post_object_im_hour_interval: deleting hours because hours='$hours', interval_id=$interval_id"
+	db_dml del_hours "delete from im_hour_intervals where interval_id = :interval_id"
+    } else {
+	# Update the object. This routine will return a HTTP error in case 
+	# of a database constraint violation
+	ns_log Notice "im_rest_post_object_im_hour_interval: Before updating hours=$hours with interval_id=$interval_id"
+	im_rest_object_type_update_sql \
+	    -rest_otype $rest_otype \
+	    -rest_oid $rest_oid \
+	    -hash_array [array get hash_array]
+	ns_log Notice "im_rest_post_object_im_hour_interval: After updating hours=$hours with interval_id=$interval_id"
+    }
+
+    # The update was successful - return a suitable message.
+    switch $format {
+	html { 
+	    set page_title "object_type: $rest_otype"
+	    doc_return 200 "text/html" "
+		[im_header $page_title][im_navbar]<table>
+		<tr class=rowtitle><td class=rowtitle>Object ID</td></tr>
+		<tr<td>$rest_oid</td></tr>
+		</table>[im_footer]
+	    "
+	}
+	xml {  
+	    doc_return 200 "text/xml" "<?xml version='1.0'?>\n<object_id id=\"$rest_oid\">$rest_oid</object_id>\n" 
+	}
+	json {  
+	    # doc_return 200 "text/html" "{\"success\": true,\n\"object_id\": $rest_oid}"
+	    set data_list [list]
+	    foreach key [array names hash_array] {
+		set value $hash_array($key)
+		lappend data_list "\"$key\": \"[im_quotejson $value]\""
+	    }
+
+	    set data "\[{[join $data_list ", "]}\]"
+	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
+	    doc_return 200 "text/html" $result
+	}
+    }
+}
+
+
+
+
+
+# --------------------------------------------------------
 # im_note
 #
 
