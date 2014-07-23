@@ -1328,11 +1328,17 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     }
 
     # Check that all required variables are there
-    set required_vars { user_id project_id day hours note }
+    set required_vars { user_id project_id interval_start interval_end note }
     foreach var $required_vars {
 	if {![info exists $var]} { 
 	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
 	}
+    }
+
+    # Permission Check: Only log hours for yourself
+    set current_user_id [ad_get_user_id]
+    if {$user_id != $current_user_id} { 
+	return [im_rest_error -format $format -http_status 403 -message "You can log hours only for yourself."] 
     }
 
     # Check for duplicate
@@ -1341,12 +1347,13 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
 		from    im_hour_intervals
 		where	user_id = :user_id and
 			project_id = :project_id and
-			day = :day
+			interval_start = :interval_start
     "
     if {[db_string duplicates $dup_sql]} {
-	return [im_rest_error -format $format -http_status 406 -message "Duplicate $rest_otype_pretty: Your item already exists with the specified user, project and day."]
+	return [im_rest_error -format $format -http_status 406 -message "Duplicate $rest_otype_pretty: Your item already exists with the specified user, project and interval_start."]
     }
 
+    # Create the new object
     if {[catch {
 	set rest_oid [db_string item_id "select nextval('im_hour_intervals_seq')"]
 	db_dml new_im_hour_interval "
@@ -1375,7 +1382,6 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
 	    -rest_otype $rest_otype \
 	    -rest_oid $rest_oid \
 	    -hash_array [array get hash_array]
-
     } err_msg]} {
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
@@ -1406,7 +1412,7 @@ ad_proc -private im_rest_post_object_im_hour_interval {
 } {
     Handler for POST calls on particular im_hour_interval objects.
     im_hour_interval is not a real object type and performs a "delete" 
-    operation specifying hours=0 or hours="".
+    operation when interval_start = interval_end
 } {
     ns_log Notice "im_rest_post_object_im_hour_interval: rest_oid=$rest_oid"
 
@@ -1420,23 +1426,22 @@ ad_proc -private im_rest_post_object_im_hour_interval {
 	set $key $value
     }
 
-    set hours $hash_array(hours)
     set interval_id $hash_array(interval_id)
-    if {"" == $hours || 0.0 == $hours} {
-	# Delete the hour instead of updating it.
+    if {$interval_start == $interval_end} {
+	# Delete the hour_interval instead of updating it.
 	# im_hour_intervals is not a real object, so we don't need to
 	# cleanup acs_objects.
-	ns_log Notice "im_rest_post_object_im_hour_interval: deleting hours because hours='$hours', interval_id=$interval_id"
+	ns_log Notice "im_rest_post_object_im_hour_interval: deleting hours because interval_start = interval_end = $interval_start', interval_id=$interval_id"
 	db_dml del_hours "delete from im_hour_intervals where interval_id = :interval_id"
     } else {
 	# Update the object. This routine will return a HTTP error in case 
 	# of a database constraint violation
-	ns_log Notice "im_rest_post_object_im_hour_interval: Before updating hours=$hours with interval_id=$interval_id"
+	ns_log Notice "im_rest_post_object_im_hour_interval: Before updating interval_id=$interval_id"
 	im_rest_object_type_update_sql \
 	    -rest_otype $rest_otype \
 	    -rest_oid $rest_oid \
 	    -hash_array [array get hash_array]
-	ns_log Notice "im_rest_post_object_im_hour_interval: After updating hours=$hours with interval_id=$interval_id"
+	ns_log Notice "im_rest_post_object_im_hour_interval: After updating interval_id=$interval_id"
     }
 
     # The update was successful - return a suitable message.

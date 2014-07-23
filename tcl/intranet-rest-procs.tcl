@@ -314,7 +314,7 @@ ad_proc -private im_rest_call {
 			-query_hash_pairs $query_hash_pairs
 
 		} err_msg]} {
-		    ns_log Error "im_rest_call: Error during POST operation: $err_msg"
+		    ns_log Error "im_rest_call: Error during POST operation: $err_msg: $::errorInfo"
 		}
 
 	    } else {
@@ -329,7 +329,7 @@ ad_proc -private im_rest_call {
 			-query_hash_pairs $query_hash_pairs
 		    
 		} err_msg]} {
-		    ns_log Error "im_rest_call: Error during POST operation: $err_msg"
+		    ns_log Error "im_rest_call: Error during POST operation: $err_msg: $::errorInfo"
 		}
 	    }
 	}
