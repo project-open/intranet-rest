@@ -1724,6 +1724,7 @@ ad_proc -private im_rest_delete_object {
     # Deal with certain subtypes
     switch $rest_otype {
 	im_ticket {
+	    # use im_project_nuke that also serves to delete tickets
 	    set nuke_otype "im_project"
 	}
 	default {
