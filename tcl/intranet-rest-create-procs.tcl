@@ -1314,7 +1314,7 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     Create a new Timesheet Hour line and return the item_id.
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
-
+    set current_user_id $user_id
 
     # Extract a key-value list of variables from XML or JSON POST request
     array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
@@ -1347,7 +1347,6 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     }
 
     # Permission Check: Only log hours for yourself
-    set current_user_id [ad_get_user_id]
     if {$user_id != $current_user_id} { 
 	return [im_rest_error -format $format -http_status 403 -message "You can log hours only for yourself."] 
     }
