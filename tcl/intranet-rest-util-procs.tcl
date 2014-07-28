@@ -1051,9 +1051,20 @@ ad_proc -public im_rest_parse_xml_json_content {
     return [array get hash_array]
 }
 
+ad_proc -public im_rest_normalize_timestamp { date_string } {
+    Reformat JavaScript date/timestamp format to suit PostgreSQL 8.4/9.x
+    @author Frank Bergmann
+} {
+    set str $date_string
 
+    # Cut off the GMT+0200... when using long format
+    # Wed Jul 23 2014 19:23:26 GMT+0200 (Romance Daylight Time)
+    if {[regexp {^(.*?)GMT\+} $str match val]} {
+	set str $val
+    }
 
-
+    return $str
+}
 
 
 ad_proc -public im_quotejson { str } {
@@ -1068,4 +1079,5 @@ ad_proc -public im_quotejson { str } {
     regsub -all {\t} $str {\\t} str
     return $str
 }
+
 

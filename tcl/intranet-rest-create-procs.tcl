@@ -1333,6 +1333,17 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
 	if {![info exists $var]} { 
 	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
 	}
+	
+	# Fix timestamp format between JavaScript and PostgreSQL 8.4/9.x
+	# Wed Jul 23 2014 19:23:26 GMT+0200 (Romance Daylight Time)
+	switch $var {
+	    interval_start - interval_end {
+		set val [im_rest_normalize_timestamp [im_opt_val $var]]
+		set $var $val
+		set hash_array($var) $val
+	    }
+	}
+
     }
 
     # Permission Check: Only log hours for yourself
