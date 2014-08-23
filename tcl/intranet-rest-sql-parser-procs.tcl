@@ -32,10 +32,10 @@ ad_proc -public sql_select {str} {
     set select_cols [list]
     while {$continue} {
 	set s0 [sql_exact $str "*"]
-	if {"" == [lindex $s0 0]} { set s0 [sql_functions $str] }
+#	if {"" == [lindex $s0 0]} { set s0 [sql_functions $str] }
 	if {"" == [lindex $s0 0]} { set s0 [sql_value_litteral $str] }
 	if {"" == [lindex $s0 0]} { return [list "" $str_org "Select - expecting '*', function or literal"] }
-	lappend select_cols [lindex s0 0]
+	lappend select_cols [lindex $s0 0]
 	set str [lindex $s0 1]
 
 	set komma [sql_exact $str ","]
@@ -49,29 +49,32 @@ ad_proc -public sql_select {str} {
     set str [lindex $from 1]
 
     set t0 [sql_from_table_reference $str]
+    set str [lindex $t0 1]
     if {"" == [lindex $t0 0]} { return [list "" $str_org "Select - expecting table reference after 'from'"] }
-    set table_references [list $t0]
+    set table_references [list [lindex $t0 0]]
     
     set komma [sql_exact $str ","]
+    set str [lindex $komma 1]
     while {"," == [lindex $komma 0]} {
-	set str [lrange $str 1 end]
 	set t1 [sql_from_table_reference $str]
 	if {"" == [lindex $t1 0]} { return [list "" $str_org "Select - expecting table reference after ','"] }
 	set str [lindex $t1 1]
 	lappend table_references $t1
 	set komma [sql_exact $str ","]
+	set str [lindex $komma 1]
     }
 
     # [ 'where' search_condition ]
     set where [sql_exact $str "where"]
-    if {"" == [lindex $where 0]} { 
-	set str [lindex $where 1]
+    set str [lindex $where 1]
+    set search_condition ""
+    if {"" != [lindex $where 0]} { 
 	set search_condition [sql_search_condition $str]
 	if {"" == [lindex $search_condition 0]} { return [list "" $str_org "Select - expecting search_condition after 'where'"] }
 	set str [lindex $search_condition 1]
     }
 
-    return [list [list select ] $str ""]
+    return [list [list select $select_cols $table_references [lindex $search_condition 0]] $str ""]
 
 }
 
@@ -129,7 +132,7 @@ ad_proc -public sql_search_value {str} {
 	if {"" == [lindex $cont 0]} { return [list "" $str_org "Not a search value - expecting between, like, in, compare, containing or starting after value_litteral"] }
 	set str [lindex $cont 1]
 
-	return [list $v0 [lindex $cont 0]  $str ""]
+	return [list [list [lindex $v0 0] [lindex $cont 0]] $str ""]
     }
 
     # 'is' [ 'not' ] 'null' |
@@ -148,9 +151,6 @@ ad_proc -public sql_search_value {str} {
 	return [list "is [lindex $not 0] null" $str ""]
     }
 
-ad_return_complaint 1 $v0
-
-    
     # '(' search_condition ')'
     set par [sql_exact $str "("]
     if {"" != [lindex $par 0]} {
@@ -183,16 +183,123 @@ ad_return_complaint 1 $v0
 
 
 
+# like = 'like' value_litteral [ ESCAPE value_litteral ].
+ad_proc -public sql_like {str} {
+    ns_log Notice "sql_like: $str"
+    set str_org $str
+
+    set like [sql_exact $str "like"]
+    if {"" == [lindex $like 0]} { return [list "" $str_org "Not a like - 'like' expected as first literal"] }
+    set str [lindex $like 1]
+
+    set val [sql_value_litteral $str]
+    if {"" == [lindex $val 0]} { return [list "" $str_org "Not a like - value_litteral expected after 'like'"] }
+    set str [lindex $val 1]
+
+    return [list [list like [lindex $val 0]] $str ""]
+}
+
+
+# containing = 'containing' value_litteral .
+ad_proc -public sql_containing {str} {
+    ns_log Notice "sql_containing: $str"
+    set str_org $str
+
+    set containing [sql_exact $str "containing"]
+    if {"" == [lindex $containing 0]} { return [list "" $str_org "Not a containing - 'containing' expected as first literal"] }
+    set str [lindex $containing 1]
+
+    set val [sql_value_litteral $str]
+    if {"" == [lindex $val 0]} { return [list "" $str_org "Not a containing - value_litteral expected after 'containing'"] }
+    set str [lindex $val 1]
+
+    return [list [list containing [lindex $val 0]] $str ""]
+}
+
+
+# starting = 'starting' value_litteral .
+ad_proc -public sql_starting {str} {
+    ns_log Notice "sql_starting: $str"
+    set str_org $str
+
+    set starting [sql_exact $str "starting"]
+    if {"" == [lindex $starting 0]} { return [list "" $str_org "Not a starting - 'starting' expected as first literal"] }
+    set str [lindex $starting 1]
+
+    set val [sql_value_litteral $str]
+    if {"" == [lindex $val 0]} { return [list "" $str_org "Not a starting - value_litteral expected after 'starting'"] }
+    set str [lindex $val 1]
+
+    return [list [list starting [lindex $val 0]] $str ""]
+}
+
+
+# in = 'in' '(' value_litteral { ',' value_litteral } | select_column_list ')'.
+ad_proc -public sql_in {str} {
+    ns_log Notice "sql_in: $str"
+    set str_org $str
+
+    set in [sql_exact $str "in"]
+    if {"" == [lindex $in 0]} { return [list "" $str_org "Not a in - 'in' expected as first literal"] }
+    set str [lindex $in 1]
+
+    set par [sql_exact $str "("]
+    if {"" == [lindex $par 0]} { return [list "" $str_org "Not a in - '(' expected as second literal"] }
+    set str [lindex $par 1]
+
+    # Check for list of value_litterals
+    set result [list in_litterals [list]]
+    set val [sql_value_litteral $str]
+    set str [lindex $val 1]
+    set values [list]
+    if {"" != [lindex $val 0]} {
+	lappend values [lindex $val 0]
+
+	set komma [sql_exact $str ","]
+	set str [lindex $komma 1]
+	while {"," == [lindex $komma 0]} {
+	    set val [sql_value_litteral $str]
+	    set str [lindex $val 1]
+	    if {"" == [lindex $val 0]} { return [list "" $str_org "Not a in - value_litteral expected after ',' in 'in'"] }
+	    lappend values [lindex $val 0]
+
+	    set komma [sql_exact $str ","]
+	    set str [lindex $komma 1]
+	}
+
+	set result [list in_litterals $values]
+    }
+
+    # Check for select_column_list
+    set collist [sql_select $str]
+    set str [lindex $collist 1]
+    if {"" != [lindex $collist 0]} { 
+	set result [list in_collist [lindex $collist 0]]
+    }
+
+    set par [sql_exact $str ")"]
+    if {"" == [lindex $par 0]} { return [list "" $str_org "Not a in - ')' expected after last value_litteral"] }
+    set str [lindex $par 1]
+    
+
+    return [list $result $str ""]
+}
+
+
 # between = 'between' value_litteral 'and' value_litteral.
 ad_proc -public sql_between {str} {
     ns_log Notice "sql_between: $str"
+
     if {"between" != [lindex $str 0]} { return [list "" $str "Not a between - 'between' expected as first literal"] }
     set str [lrange $str 1 end]
+
     set b1 [sql_value_litteral $str]
     if {"" == [lindex $b1 0]} { return [list "" $str "Not a between - literal expected as 2nd literal"] }
     set str [lindex $b1 1]
+
     if {"and" != [lindex $str 0]} { return [list "" $str "Not a between - 'and' expected as 3rd literal"] }
     set str [lrange $str 1 end]
+
     set b2 [sql_value_litteral $str]
     if {"" == [lindex $b2 0]} { return [list "" $str "Not a between - literal expected as 4th literal"] }
     set str [lindex $b2 1]
@@ -200,7 +307,7 @@ ad_proc -public sql_between {str} {
     return [list [list between [lindex $b1 0] and [lindex $b2 0]] $str ""]
 }
 
-# from_table_reference = name procedure_end | joined_table.
+# from_table_reference = name [ procedure_end ] [ alias_name ] | joined_table.
 ad_proc -public sql_from_table_reference {str} {
     ns_log Notice "sql_from_table_reference: $str"
 
@@ -209,13 +316,16 @@ ad_proc -public sql_from_table_reference {str} {
     set str [lindex $name 1]
 
     set procedure_end [sql_procedure_end $str]
-    if {"" == [lindex $procedure_end 0]} { return $name }
-
     set str [lindex $procedure_end 1]
-    return [list [list [lindex $name 0] [lindex $procedure_end 0]] $str ""]
+
+    # Optional alias
+    set alias [sql_name $str]
+    set str [lindex $alias 1]
+
+    return [list [list name [lindex $name 0] procedure_end [lindex $procedure_end 0] alias [lindex $alias 0]] $str ""]
 }
 
-#  procedure_end= [ '(' value_litteral { ',' value_litteral } ')' ] [ alias_name ] .
+#  procedure_end= '(' value_litteral { ',' value_litteral } ')' .
 ad_proc -public sql_procedure_end {str} {
     ns_log Notice "sql_procedure_end: $str"
     set str_org $str
@@ -244,11 +354,37 @@ ad_proc -public sql_procedure_end {str} {
     if {"" == [lindex $par_close 0]} { return [list "" $str_org "Not a procedure_end - expecting ')' as last literal"] }
     set str [lindex $par_close 1]
 
-    set alias [sql_name $str]
-    if {"" != [lindex $alias 0]} { lappend values "([lindex $alias 0])" }
-    set str [lindex $alias 1]
-
     return [list $values $str ""]
+}
+
+
+
+# compare = operator ( value_litteral | '(' select_one_column ')' ) .
+ad_proc -public sql_compare {str} {
+    ns_log Notice "sql_compare: $str"
+    set str_org $str
+
+    set op [sql_operator $str]
+    if {"" == [lindex $op 0]} { return [list "" $str_org "Compare - expecting operator as first token"] }
+    set str [lindex $op 1]
+
+    # Try value_litteral after operator
+    set val [sql_value_litteral $str]
+    set str [lindex $val 1]
+    if {"" != [lindex $val 0]} {
+	return [list [list operator [lindex $op 0] value [lindex $val 0]] $str ""]
+    }
+
+    # Otherwise go for select
+    set par [sql_exact $str "("]
+    set str [lindex $par 1]
+    if {"" == [lindex $par 0]} { return [list "" $str_org "Compare - expecting '(' or value_litteral after operator"] }
+    
+    set sel [sql_select $str]
+    set str [lindex $sel 1]
+    if {"" == [lindex $sel 0]} { return [list "" $str_org "Compare - expecting select after '('"] }
+
+    return [list [list operator [lindex $op 0] select [lindex $sel 0]] $str ""]
 }
 
 ad_proc -public sql_value_litteral {str} {
@@ -276,7 +412,7 @@ ad_proc -public sql_name {str} {
     }
 
     set name [lindex $str 0]
-    if {[regexp {^[[:alnum:]_]+$} $name match]} { return [list $name [lrange $str 1 end] ""] }
+    if {[regexp {^[[:alnum:]_\.]+$} $name match]} { return [list $name [lrange $str 1 end] ""] }
     return [list "" $str "Not a name - contains non-name characters"]
 }
 
@@ -297,6 +433,19 @@ ad_proc -public sql_keyword {str} {
 	if {$s0 == $keyword} { return [list $keyword [lrange $str 1 end] ""] }
     }
     return [list "" $str "Not a keyword"]
+}
+
+# operator= '=' | '<' | '>' | '<=' | '>=' | '<>'.
+ad_proc -public sql_operator {str} {
+    ns_log Notice "sql_operator: $str"
+
+    set s0 [lindex $str 0]
+    set operators {"=" "<" ">" "<=" ">=" "<>"}
+    set found_operator ""
+    foreach operator $operators {
+	if {$s0 == $operator} { return [list $operator [lrange $str 1 end] ""] }
+    }
+    return [list "" $str "Not a operator"]
 }
 
 
@@ -368,8 +517,10 @@ ad_proc -public sql_test {
     lappend e [sql_assert sql_select "select * from test1"]
     lappend e [sql_assert sql_select "select * from test1 , test2"]
     lappend e [sql_assert sql_select "select * from test1 , test2 where 1 = 2"]
+    lappend e [sql_assert sql_select "select * from users where user_id in ( 1 , 2 , 3 )"]
 
     # sql_search_value
+    lappend e [sql_assert sql_search_value "var between 1 and 10"]
     lappend e [sql_assert sql_search_value "var is not null"]
     lappend e [sql_assert sql_search_value "var < 10"]
     lappend e [sql_assert sql_search_value "( var > 20 )"]
