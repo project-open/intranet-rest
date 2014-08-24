@@ -113,6 +113,45 @@ ad_proc -public sql_search_value {str} {
     ns_log Notice "sql_search_value: $str"
     set str_org $str
 
+    # Search for simple keyword to start with 
+    set kw [lindex $str 0]
+    switch $kw {
+	"(" {
+	    # '(' search_condition ')'
+	    set str [lrange $str 1 end]
+	    set s0 [sql_search_condition $str]
+	    if {"" == [lindex $s0 0]} { return [list "" $str_org "Not a search value - expecting search_condition after '('"] }
+	    set str [lindex $s0 1]
+	    
+	    set par [sql_exact $str ")"]
+	    if {"" == [lindex $par 0]} { return [list "" $str_org "Not a search value - expecting ')' after search_condition"] }
+	    set str [lindex $par 1]
+	    
+	    return [list [lindex $s0 0] $str ""]
+	}
+	"not" {
+	    # 'not' search_condition
+	    set str [lrange $str 1 end]
+	    set s0 [sql_search_condition $str]
+	    if {"" == [lindex $s0 0]} { return [list "" $str_org "Not a search value - expecting search_condition after 'not'"] }
+	    set str [lindex $s0 1]
+	    return [list [list "not" [lindex $s0 0]] $str ""]
+	}
+	"is" {
+	    # 'is' [ 'not' ] 'null' |
+	    set str [lrange $str 1 end]
+	    # Optional 'not' - simply ignore error of sql_exact
+	    set not [sql_exact $str "not"]
+	    set str [lindex $not 1]
+	    
+	    set null [sql_exact $str "null"]
+	    if {"" == [lindex $null 0]} { return [list "" $str_org "Not a search value - expecting 'null' after 'is'"] }
+	    set str [lindex $null 1]
+	    
+	    return [list "is [lindex $not 0] null" $str ""]
+	}
+    }
+
     # value_litteral [ 'not' ] ( between | like | in | compare | containing | starting ) |
     set v0 [sql_value_litteral $str]
     if {"" != [lindex $v0 0]} {
@@ -123,61 +162,57 @@ ad_proc -public sql_search_value {str} {
 	set str [lindex $not 1]
 
 	set cont [list ""]
-	if {"" == [lindex $cont 0]} { set cont [sql_between $str] }
-	if {"" == [lindex $cont 0]} { set cont [sql_like $str] }
-	if {"" == [lindex $cont 0]} { set cont [sql_in $str] }
-	if {"" == [lindex $cont 0]} { set cont [sql_compare $str] }
-	if {"" == [lindex $cont 0]} { set cont [sql_containing $str] }
-	if {"" == [lindex $cont 0]} { set cont [sql_starting $str] }
-	if {"" == [lindex $cont 0]} { return [list "" $str_org "Not a search value - expecting between, like, in, compare, containing or starting after value_litteral"] }
+	set kw [lindex $str 0]
+	set op [sql_operator $str]
+	if {"" != [lindex $op 0]} { set kw "compare" }
+	switch $kw {
+	    "between" {
+		set cont [sql_between $str]
+		if {"" == [lindex $cont 0]} { return [list "" $str_org "Not a search_value - invalid 'between' clause"] }
+	    }
+	    "compare" {
+		set cont [sql_compare $str]
+		if {"" == [lindex $cont 0]} { return [list "" $str_org "Not a search_value - invalid 'compare' clause"] }
+	    }
+	    "containing" {
+		set cont [sql_containing $str]
+		if {"" == [lindex $cont 0]} { return [list "" $str_org "Not a search_value - invalid 'containing' clause"] }
+	    }
+	    "in" {
+		set cont [sql_in $str]
+		if {"" == [lindex $cont 0]} { return [list "" $str_org "Not a search_value - invalid 'in' clause"] }
+	    }
+	    "is" {
+		# 'is' [ 'not' ] 'null' |
+		set str [lrange $str 1 end]
+		    
+		# Optional 'not' - simply ignore error of sql_exact
+		set not [sql_exact $str "not"]
+		set str [lindex $not 1]
+		
+		set null [sql_exact $str "null"]
+		if {"" == [lindex $null 0]} { return [list "" $str_org "Not a search value - expecting 'null' after 'is'"] }
+		set str [lindex $null 1]
+		
+		return [list "is [lindex $not 0] null" $str ""]
+	    }
+	    "like" {
+		set cont [sql_like $str]
+		if {"" == [lindex $cont 0]} { return [list "" $str_org "Not a search_value - invalid 'like' clause"] }
+	    }
+	    "starting" {
+		set cont [sql_starting $str]
+		if {"" == [lindex $cont 0]} { return [list "" $str_org "Not a search_value - invalid 'starting' clause"] }
+	    }
+	    default {
+		return [list "" $str_org "Not a search_value - expecting between, like, in, compare, containing or starting after value_litteral, found '$kw'"]
+	    }
+	}
 	set str [lindex $cont 1]
-
-	return [list [list [lindex $v0 0] [lindex $cont 0]] $str ""]
+	return [list [list litteral [lindex $v0 0] not [lindex $not 0] $kw [lindex $cont 0]] $str ""]
     }
 
-    # 'is' [ 'not' ] 'null' |
-    set is [sql_exact $str "is"]
-    if {"" != [lindex $is 0]} {
-	set str [lindex $is 1]
-
-	# Optional 'not' - simply ignore error of sql_exact
-	set not [sql_exact $str "not"]
-	set str [lindex $not 1]
-
-	set null [sql_exact $str "null"]
-	if {"" == [lindex $null 0]} { return [list "" $str_org "Not a search value - expecting 'null' after 'is'"] }
-	set str [lindex $null 1]
-
-	return [list "is [lindex $not 0] null" $str ""]
-    }
-
-    # '(' search_condition ')'
-    set par [sql_exact $str "("]
-    if {"" != [lindex $par 0]} {
-	set str [lindex $par 1]
-
-	set s0 [sql_search_condition $str]
-	if {"" == [lindex $s0 0]} { return [list "" $str_org "Not a search value - expecting search_condition after '('"] }
-	set str [lindex $s0 1]
-
-	set par [sql_exact $str ")"]
-	if {"" == [lindex $par 0]} { return [list "" $str_org "Not a search value - expecting ')' after search_condition"] }
-	set str [lindex $par 1]
-
-	return [ [lindex $s0 0] $str ""]
-    }
-
-    # 'not' search_condition
-    set not [sql_exact $str "not"]
-    if {"" != [lindex $not 0]} {
-	set str [lindex $not 1]
-	set s0 [sql_search_condition $str]
-	if {"" == [lindex $s0 0]} { return [list "" $str_org "Not a search value - expecting search_condition after 'not'"] }
-	set str [lindex $s0 1]
-	return [[list "not" [lindex $s0 0]] $str ""]
-    }
-
-    return ["" $str "Not a search value - found none of the options"]
+    return [list "" $str "Not a search value - found none of the options"]
 }
 
 
@@ -247,40 +282,36 @@ ad_proc -public sql_in {str} {
     if {"" == [lindex $par 0]} { return [list "" $str_org "Not a in - '(' expected as second literal"] }
     set str [lindex $par 1]
 
-    # Check for list of value_litterals
-    set result [list in_litterals [list]]
-    set val [sql_value_litteral $str]
-    set str [lindex $val 1]
-    set values [list]
-    if {"" != [lindex $val 0]} {
-	lappend values [lindex $val 0]
-
-	set komma [sql_exact $str ","]
-	set str [lindex $komma 1]
-	while {"," == [lindex $komma 0]} {
-	    set val [sql_value_litteral $str]
-	    set str [lindex $val 1]
-	    if {"" == [lindex $val 0]} { return [list "" $str_org "Not a in - value_litteral expected after ',' in 'in'"] }
-	    lappend values [lindex $val 0]
-
-	    set komma [sql_exact $str ","]
-	    set str [lindex $komma 1]
+    set kw [lindex $str 0]
+    switch $kw {
+	"select" {
+	    # Check for select_column_list
+	    set collist [sql_select $str]
+	    set str [lindex $collist 1]
+	    if {"" == [lindex $collist 0]} { return [list "" $str_org "Not a in - valid select statement expected after 'in' '(' 'select'"] }
+	    set result [list in_collist [lindex $collist 0]]
 	}
+	default {
+	    # Check for list of value_litterals
+	    set continue 1
+	    set values [list]
+	    while {$continue} {
+		set val [sql_value_litteral $str]
+		if {"" == [lindex $val 0]} { return [list "" $str_org "Not a in - invalid value_litteral in list of values"] }
+		lappend values [lindex $val 0]
+		set str [lindex $val 1]
 
-	set result [list in_litterals $values]
-    }
-
-    # Check for select_column_list
-    set collist [sql_select $str]
-    set str [lindex $collist 1]
-    if {"" != [lindex $collist 0]} { 
-	set result [list in_collist [lindex $collist 0]]
+		set komma [sql_exact $str ","]
+		set str [lindex $komma 1]
+		if {"," != [lindex $komma 0]} { set continue 0 }
+	    }
+	    set result [list in_valuelist $values]
+	}
     }
 
     set par [sql_exact $str ")"]
     if {"" == [lindex $par 0]} { return [list "" $str_org "Not a in - ')' expected after last value_litteral"] }
     set str [lindex $par 1]
-    
 
     return [list $result $str ""]
 }
@@ -389,11 +420,52 @@ ad_proc -public sql_compare {str} {
 
 ad_proc -public sql_value_litteral {str} {
     ns_log Notice "sql_value_litteral: $str"
-    set int [sql_integer $str]
-    if {"" != [lindex $int 0]} { return $int }
-    set name [sql_name $str]
-    if {"" != [lindex $name 0]} { return $name }
-    return [list "" $str]
+    set str_org $str
+
+    set first_char [string range $str 0 0]
+    if {[string is integer $first_char]} { set first_char "integer" }
+    if {[string is alpha $first_char]} { set first_char "alpha" }
+    switch $first_char {
+	"'" {
+	    # Search for ending tick
+	    set lit ""
+	    set str [string range $str 1 end]
+	    set char [string range $str 0 0]
+	    set cnt 0
+	    while {$cnt < 1000 && "'" != $char && [string length $str] > 0} {
+		append lit $char
+		set str [string range $str 1 end]
+		set char [string range $str 0 0]
+		incr cnt
+	    }
+
+	    if {"'" != $char} { return [list "" $str "Value litteral - found invalid value litteral"] }
+	    set str [string range $str 1 end]
+	
+	    # Skip whitespaces after tick
+	    set cnt 0
+	    set char [string range $str 0 0]
+	    while {$cnt < 1000 && " " == $char && [string length $str] > 0} {
+		set str [string range $str 1 end]
+		set char [string range $str 0 0]
+		incr cnt
+	    }
+            return [list $lit $str ""]
+	}
+	"integer" {
+	    set int [sql_integer $str]
+	    if {"" == [lindex $int 0]} { return [list "" $str_org "Value litteral - found bad integer"] }
+	    return $int
+	}
+	"alpha" {
+	    set alpha [sql_name $str]
+	    if {"" == [lindex $alpha 0]} { return [list "" $str_org "Value litteral - found bad name"] }
+	    return $alpha
+	}
+	default {
+	    return [list "" $str_org "Value litteral - found invalid value litteral"]
+	}
+    }
 }
 
 ad_proc -public sql_exact {str exact} {
@@ -440,7 +512,7 @@ ad_proc -public sql_operator {str} {
     ns_log Notice "sql_operator: $str"
 
     set s0 [lindex $str 0]
-    set operators {"=" "<" ">" "<=" ">=" "<>"}
+    set operators {"=" "!=" "<" ">" "<=" ">=" "<>"}
     set found_operator ""
     foreach operator $operators {
 	if {$s0 == $operator} { return [list $operator [lrange $str 1 end] ""] }
@@ -468,6 +540,9 @@ ad_proc -public sql_assert {
     } else {
 	ns_log Notice "sql_assert: $str is $type: OK"
     }
+
+    lappend result $type
+    lappend result $str
     return $result
 }
 
@@ -513,31 +588,112 @@ ad_proc -public sql_test {
     # from_table_reference
     lappend e [sql_assert sql_from_table_reference "func ( a , b ) alias"]
 
+    # search_value
+    lappend e [sql_assert sql_search_value "project_id = 46896"]
+    lappend e [sql_assert sql_search_value "var between 1 and 10"]
+    lappend e [sql_assert sql_search_value "var is not null"]
+    lappend e [sql_assert sql_search_value "var != 30"]
+    lappend e [sql_assert sql_search_value "var < 10"]
+    lappend e [sql_assert sql_search_value "( var > 20 )"]
+    lappend e [sql_assert sql_search_value "not ( var != 30 )"]
+    lappend e [sql_assert sql_search_value "var like '%asdf%'"]
+    lappend e [sql_assert sql_search_value "exists ( select * from users )"]
+
+    # search_condition
+    lappend e [sql_assert sql_search_condition "p.project_id = 46896"]
+    lappend e [sql_assert sql_search_condition "p.project_id = 46896 and u.user_id = p.user_id"]
+
     # select
     lappend e [sql_assert sql_select "select * from test1"]
     lappend e [sql_assert sql_select "select * from test1 , test2"]
     lappend e [sql_assert sql_select "select * from test1 , test2 where 1 = 2"]
     lappend e [sql_assert sql_select "select * from users where user_id in ( 1 , 2 , 3 )"]
 
-    # sql_search_value
-    lappend e [sql_assert sql_search_value "var between 1 and 10"]
-    lappend e [sql_assert sql_search_value "var is not null"]
-    lappend e [sql_assert sql_search_value "var < 10"]
-    lappend e [sql_assert sql_search_value "( var > 20 )"]
-    lappend e [sql_assert sql_search_value "not (var != 30)"]
-    lappend e [sql_assert sql_search_value "var like '%asdf%'"]
-    lappend e [sql_assert sql_search_value "exists (select * from users)"]
 	       
     # -------------------------
     set cnt 0
     set errors [list]
     foreach entry $e {
+	set test_result [lindex $entry 0]
+	set test_unparsed_str [lindex $entry 1]
+	set test_errmsg [lindex $entry 2]
+	set test_type [lindex $entry 3]
+	set test_str [lindex $entry 4]
+
 	incr cnt
 	if {"" != [lindex $entry 2]} {
+	    return [list $test_type $test_str $test_errmsg $test_unparsed_str]
 	    lappend errors $entry
 	}
     }
     lappend errors [list "" "" "$cnt tests executed"]
     return $errors
+}
+
+
+set bnf {
+select_expression = select.
+select_one_column = select.
+select_column_list = select.
+select = SELECT [ DISTINCT | ALL ] ( '*' | functions | value_litteral { ',' value_litteral } )
+	FROM from_table_reference { ',' from_table_reference }
+	[ WHERE search_condition ]
+	[ GROUP BY column_name
+	[ COLLATE collation_name ] { ',' column_name [ COLLATE collation_name ] } ]
+	[ HAVING search_condition ]
+	[ UNION select_expression [ ALL ] ]
+	[ ORDER BY order_list ].
+
+
+search_condition = search_value { ( OR | AND ) search_condition }.
+search_value = 
+	value_litteral ( [ NOT ] ( between | like | in | compare | containing | starting ) | 
+	IS [ NOT ] NULL ) |
+	( ALL | SOME | ANY ) '(' select_column_list ')' |
+	EXISTS '(' select_expression ')' |
+	SINGULAR '(' select_expression ')' |
+	'(' search_condition ')' |
+	NOT search_condition.
+
+
+between = BETWEEN value_litteral AND value_litteral.
+like = LIKE value_litteral [ ESCAPE value_litteral ].
+in = IN '(' value_litteral { ',' value_litteral } | select_column_list ')'.
+compare = operator ( value_litteral | '(' select_one_column ')' ).
+containing = CONTAINING value_litteral.
+starting = STARTING [ WITH ] value_litteral.
+
+
+from_table_reference = NAME procedure_end | joined_table.
+procedure_end = [ '(' value_litteral { ',' value_litteral } ')' ] [ alias_name ].
+joined_table = ( name_view_procedure join_on | '(' joined_table ')' ) { join_on }.
+join_on = join_type ( joined_table | name_view_procedure ) ON search_condition.
+join_type = ( [ INNER | { LEFT | RIGHT | FULL } [OUTER] ] ) JOIN.
+order_list = ( column_name | integer_litteral ) [ COLLATE collation_name ] [ ascending_or_descending ] { ',' order_list }.
+ascending_or_descending = ASC | ASCENDING | DESC | DESCENDING.
+
+
+functions = average | count | max | min | sum | upper.
+	average = AVG '(' [ ALL | DISTINCT ] value_litteral ')'.
+	count = COUNT '(' '*' | [ ALL | DISTINCT ] value_litteral ')'.
+	max = MAX '(' [ ALL | DISTINCT ] value_litteral ')'.
+	min = MIN '(' [ ALL | DISTINCT ] value_litteral ')'.
+	sum = SUM '(' [ ALL | DISTINCT ] value_litteral ')'.
+	upper = UPPER '(' value_litteral ')'.
+
+value_litteral = VALUE_LITTERAL | NAME.
+integer_litteral = INTEGER.
+table_or_view_name = NAME.
+name_view_procedure = NAME.
+column_name = NAME.
+collation_name = NAME.
+alias_name = NAME.
+operator = ' = ' | '<' | '>' | '< = ' | '> = ' | '<>'.
+
+
+
+sql = insert | select | update.
+insert = INSERT INTO table_or_view_name [ '(' column_name { ',' column_name } ')' ] ( VALUES '(' value_litteral { ',' value_litteral } ')' | select_expression ).
+update = UPDATE table_or_view_name SET column_name ' = ' value_litteral { ',' column_name ' = ' value_litteral } [ WHERE search_condition ].
 }
 
