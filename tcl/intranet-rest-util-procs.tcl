@@ -797,6 +797,48 @@ ad_proc -public im_rest_object_type_update_sql {
 # SQL Validator
 # ----------------------------------------------------------------------
 
+ad_proc -public im_rest_valid_sql_new {
+    -string:required
+    {-variables {} }
+    {-debug 1}
+} {
+    Returns 1 if "where_clause" is a valid where_clause or 0 otherwise.
+} {
+    # An empty string is a valid SQL...
+    if {"" == $string} { return 1 }
+
+    # ------------------------------------------------------
+    # Massage the string so that it suits the rule engine.
+    # Reduce all characters to lower case
+    set string [string tolower $string]
+    # Add spaces around the string
+    set string " $string "
+    # Add an extra space between all "comparison" strings in the where clause
+    regsub -all {([\>\<\=\!]+)} $string { \1 } string
+    # Add an extra space around parentesis
+    regsub -all {([\(\)])} $string { \1 } string
+    # Add an extra space around kommas
+    regsub -all {(,)} $string { \1 } string
+    # Replace multiple spaces by a single one
+    regsub -all {\s+} $string { } string
+
+    ns_log Notice "im_rest_valid_sql: sql=$string, vars=$variables"
+
+    set result [sql_search_value $string]
+    set parsed_term [lindex $result 0]
+    set remaining_string [string trim [lindex $result 1]]
+    set error_message [lindex $result 2]
+    if {"" != $remaining_string} {
+	# Nothing remaining - everything is parsed correctly
+	return 1
+    } else {
+	# Something is left - error
+	return 0
+    }
+}
+
+
+
 ad_proc -public im_rest_valid_sql {
     -string:required
     {-variables {} }
@@ -839,6 +881,8 @@ ad_proc -public im_rest_valid_sql {
     # ------------------------------------------------------
     # Rules have a format LHS <- RHS (Left Hand Side <- Right Hand Side)
     set rules {
+	from {from [[:alnum:]_]+ [[:alnum:]_]+ ,}
+	where {from [[:alnum:]_]+ [[:alnum:]_]+ where}
 	query {select [[:alnum:]_]+}
 	query {from [[:alnum:]_]+}
 	query {where [[:alnum:]_]+ in \( query \)}
@@ -847,6 +891,7 @@ ad_proc -public im_rest_valid_sql {
 	query {query where val}
 	query {query val}
 	query {query \( val \)}
+	cond {val betweeen val and val}
 	cond {cond and cond}
 	cond {cond and val}
 	cond {cond val}
