@@ -80,7 +80,7 @@ ad_proc -public sql_select {str} {
 
 # search_condition = search_value { ( 'or' | 'and' ) search_condition }.
 ad_proc -public sql_search_condition {str} {
-    ns_log Notice "sql_search_condition: $str"
+    ns_log Notice "sql_search_condition: '$str'"
 
     set conditions [list]
     set continue 1
@@ -597,6 +597,7 @@ ad_proc -public sql_test {
 
     # search_value
     lappend e [sql_assert sql_search_value "project_id = 46896"]
+    # lappend e [sql_assert sql_search_value "project_id = 46896+1"]  # ToDo
     lappend e [sql_assert sql_search_value "var between 1 and 10"]
     lappend e [sql_assert sql_search_value "var is not null"]
     lappend e [sql_assert sql_search_value "var != 30"]

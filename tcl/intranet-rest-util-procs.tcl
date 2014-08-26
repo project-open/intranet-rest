@@ -803,6 +803,10 @@ ad_proc -public im_rest_valid_sql {
     {-debug 1}
 } {
     Returns 1 if "where_clause" is a valid where_clause or 0 otherwise.
+    ToDo:
+    <ul>
+    <li>Single quote quoting: Does not handle correctly 
+    </ul>
 } {
     # An empty string is a valid SQL...
     if {"" == $string} { return 1 }
@@ -821,17 +825,17 @@ ad_proc -public im_rest_valid_sql {
     regsub -all {(,)} $string { \1 } string
     # Replace multiple spaces by a single one
     regsub -all {\s+} $string { } string
-
-    ns_log Notice "im_rest_valid_sql: sql=$string, vars=$variables"
+    # Eliminate leading space
+    if {" " == [string range $string 0 0]} { set string [string range $string 1 end] }
 
     set result [sql_search_condition $string]
     set parsed_term [lindex $result 0]
     set remaining_string [string trim [lindex $result 1]]
     set error_message [lindex $result 2]
 
-    ad_return_complaint 1 "<pre>parsed=$parsed_term\nrem=$remaining_string\nerr=$error_message"
+    # ad_return_complaint 1 "<pre>parsed=$parsed_term\nrem=$remaining_string\nerr=$error_message"
 
-    if {"" != $remaining_string} {
+    if {"" == $remaining_string} {
 	# Nothing remaining - everything is parsed correctly
 	return 1
     } else {
