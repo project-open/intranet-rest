@@ -797,7 +797,7 @@ ad_proc -public im_rest_object_type_update_sql {
 # SQL Validator
 # ----------------------------------------------------------------------
 
-ad_proc -public im_rest_valid_sql_new {
+ad_proc -public im_rest_valid_sql {
     -string:required
     {-variables {} }
     {-debug 1}
@@ -824,10 +824,13 @@ ad_proc -public im_rest_valid_sql_new {
 
     ns_log Notice "im_rest_valid_sql: sql=$string, vars=$variables"
 
-    set result [sql_search_value $string]
+    set result [sql_search_condition $string]
     set parsed_term [lindex $result 0]
     set remaining_string [string trim [lindex $result 1]]
     set error_message [lindex $result 2]
+
+    ad_return_complaint 1 "<pre>parsed=$parsed_term\nrem=$remaining_string\nerr=$error_message"
+
     if {"" != $remaining_string} {
 	# Nothing remaining - everything is parsed correctly
 	return 1
@@ -839,7 +842,7 @@ ad_proc -public im_rest_valid_sql_new {
 
 
 
-ad_proc -public im_rest_valid_sql {
+ad_proc -public im_rest_valid_sql_disabled {
     -string:required
     {-variables {} }
     {-debug 1}
@@ -891,7 +894,7 @@ ad_proc -public im_rest_valid_sql {
 	query {query where val}
 	query {query val}
 	query {query \( val \)}
-	cond {val betweeen val and val}
+	cond {val between val and val}
 	cond {cond and cond}
 	cond {cond and val}
 	cond {cond val}

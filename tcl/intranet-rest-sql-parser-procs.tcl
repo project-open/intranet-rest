@@ -358,7 +358,7 @@ ad_proc -public sql_from_table_reference {str} {
 
 #  procedure_end= '(' value_litteral { ',' value_litteral } ')' .
 ad_proc -public sql_procedure_end {str} {
-    ns_log Notice "sql_procedure_end: $str"
+    # ns_log Notice "sql_procedure_end: $str"
     set str_org $str
 
     set par_open [sql_exact $str "("]
@@ -460,7 +460,14 @@ ad_proc -public sql_value_litteral {str} {
 	"alpha" {
 	    set alpha [sql_name $str]
 	    if {"" == [lindex $alpha 0]} { return [list "" $str_org "Value litteral - found bad name"] }
-	    return $alpha
+	    set str [lindex $alpha 1]
+	    set procedure_end [sql_procedure_end $str]
+	    set str [lindex $procedure_end 1]
+	    if {"" == [lindex $procedure_end 0]} {
+		return $alpha
+	    } else {
+		return [list [list function [lindex $alpha 0] [lindex $procedure_end 0]] $str ""]
+	    }
 	}
 	default {
 	    return [list "" $str_org "Value litteral - found invalid value litteral"]
@@ -469,13 +476,13 @@ ad_proc -public sql_value_litteral {str} {
 }
 
 ad_proc -public sql_exact {str exact} {
-    ns_log Notice "sql_exact: $str '$exact'"
+    # ns_log Notice "sql_exact: $str '$exact'"
     if {$exact == [lindex $str 0]} { return [list $exact [lrange $str 1 end] ""] }
     return [list "" $str "Not an exact($exact)"]
 }
 
 ad_proc -public sql_name {str} {
-    ns_log Notice "sql_name: $str"
+    # ns_log Notice "sql_name: $str"
 
     set keyword [sql_keyword $str]
     if {"" != [lindex $keyword 0]} {
@@ -489,14 +496,14 @@ ad_proc -public sql_name {str} {
 }
 
 ad_proc -public sql_integer {str} {
-    ns_log Notice "sql_integer: $str"
+    # ns_log Notice "sql_integer: $str"
     set int [lindex $str 0]
     if {[regexp {^[0-9]+$} $int match]} { return [list $int [lrange $str 1 end] ""] }
     return [list "" $str "Not an integer - contains non-integer characters"]
 }
 
 ad_proc -public sql_keyword {str} {
-    ns_log Notice "sql_keyword: $str"
+    # ns_log Notice "sql_keyword: $str"
 
     set s0 [lindex $str 0]
     set keywords {all and any asc ascending avg between by collate containing count desc descending distinct escape exists from full group having in is inner insert into join left like lower max min not null or order outer right set singular some starting sum table union update upper values where with}
@@ -509,7 +516,7 @@ ad_proc -public sql_keyword {str} {
 
 # operator= '=' | '<' | '>' | '<=' | '>=' | '<>'.
 ad_proc -public sql_operator {str} {
-    ns_log Notice "sql_operator: $str"
+    # ns_log Notice "sql_operator: $str"
 
     set s0 [lindex $str 0]
     set operators {"=" "!=" "<" ">" "<=" ">=" "<>"}
@@ -608,8 +615,8 @@ ad_proc -public sql_test {
     lappend e [sql_assert sql_select "select * from test1 , test2"]
     lappend e [sql_assert sql_select "select * from test1 , test2 where 1 = 2"]
     lappend e [sql_assert sql_select "select * from users where user_id in ( 1 , 2 , 3 )"]
+    lappend e [sql_assert sql_select "select p.project_id from im_projects p , im_projects main_p where main_p.project_id = 43373 and p.tree_sortkey between main_p.tree_sortkey and tree_right ( main_p.tree_sortkey )"]
 
-	       
     # -------------------------
     set cnt 0
     set errors [list]
