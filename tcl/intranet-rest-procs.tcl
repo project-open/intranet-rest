@@ -987,7 +987,14 @@ ad_proc -private im_rest_get_object_type {
 		    eval "set a $$v"
 		    regsub -all {\n} $a {\n} a
 		    regsub -all {\r} $a {} a
-		    append dereferenced_result ", \"$v\": \"[ns_quotehtml $a]\""
+
+                    # Escape the "usual suspects" based on http://wiki.tcl.tk/13419
+		    # KH: This list would need to be extended during package overhaul 10/2014.
+		    #     We either need to look for a suitable tcl lib or write our own "json_escape" function  
+                    set a [string map [list \\ \\\\ \" \\" \n \\n / \\/ \b \\b \r \\r \t \\t \x10 ""] $a] 
+
+                    append dereferenced_result ", \"$v\": \"$a\""
+
 		}
 		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[ns_quotehtml $object_name]\"$dereferenced_result}" 
 	    }
