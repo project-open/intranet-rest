@@ -504,7 +504,7 @@ ad_proc -private im_rest_get_object {
 			   -rest_otype $rest_otype \
 	]
     }
-	
+
     switch $format {
 	html { 
 	    set page_title "object_type: [db_string n "select acs_object__name(:rest_oid)"]"
@@ -798,6 +798,23 @@ ad_proc -private im_rest_get_object_type {
     if {[info exists query_hash(deref_p)]} { set deref_p $query_hash(deref_p) }
     im_security_alert_check_integer -location "im_rest_get_object: deref_p" -value $deref_p
 
+    set chars_to_be_escaped_list \
+	[list "\"" "\\\"" \\ \\\\ \b \\b \f \\f \n \\n \r \\r \t this_is_a_tab \
+	     \x00 \\u0000 \x01 \\u0001 \x02 \\u0002 \x03 \\u0003 \
+	     \x04 \\u0004 \x05 \\u0005 \x06 \\u0006 \x07 \\u0007 \
+	     \x0b \\u000b \x0e \\u000e \x0f \\u000f \x10 \\u0010 \
+	     \x11 \\u0011 \x12 \\u0012 \x13 \\u0013 \x14 \\u0014 \
+	     \x15 \\u0015 \x16 \\u0016 \x17 \\u0017 \x18 \\u0018 \
+	     \x19 \\u0019 \x1a \\u001a \x1b \\u001b \x1c \\u001c \
+	     \x1d \\u001d \x1e \\u001e \x1f \\u001f \x7f \\u007f \
+	     \x80 \\u0080 \x81 \\u0081 \x82 \\u0082 \x83 \\u0083 \
+	     \x84 \\u0084 \x85 \\u0085 \x86 \\u0086 \x87 \\u0087 \
+	     \x88 \\u0088 \x89 \\u0089 \x8a \\u008a \x8b \\u008b \
+	     \x8c \\u008c \x8d \\u008d \x8e \\u008e \x8f \\u008f \
+	     \x90 \\u0090 \x91 \\u0091 \x92 \\u0092 \x93 \\u0093 \
+	     \x94 \\u0094 \x95 \\u0095 \x96 \\u0096 \x97 \\u0097 \
+	     \x98 \\u0098 \x99 \\u0099 \x9a \\u009a \x9b \\u009b \
+	     \x9c \\u009c \x9d \\u009d \x9e \\u009e \x9f \\u009f ]
 
     # -------------------------------------------------------
     # Get some more information about the current object type
@@ -985,18 +1002,13 @@ ad_proc -private im_rest_get_object_type {
 		    if {{} != $rest_columns} { if {![info exists rest_columns_hash($v)]} { continue } }
 
 		    eval "set a $$v"
-		    regsub -all {\n} $a {\n} a
-		    regsub -all {\r} $a {} a
-
-                    # Escape the "usual suspects" based on http://wiki.tcl.tk/13419
-		    # KH: This list would need to be extended during package overhaul 10/2014.
-		    #     We either need to look for a suitable tcl lib or write our own "json_escape" function  
-                    set a [string map [list \\ \\\\ \" \\" \n \\n / \\/ \b \\b \r \\r \t \\t \x10 ""] $a] 
-
+                    set a [string map $chars_to_be_escaped_list $a]
                     append dereferenced_result ", \"$v\": \"$a\""
-
 		}
-		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[ns_quotehtml $object_name]\"$dereferenced_result}" 
+		# Add object_id & object name to the beginning of the string  
+		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[string map $chars_to_be_escaped_list $object_name]\""
+		# Add dataset 
+		append result "$dereferenced_result}" 
 	    }
 	    html { 
 		append result "<tr>
