@@ -26,7 +26,7 @@ if {0 == $user_id} {
 	    ad_return_complaint 1 "Not authorized"
 	    ad_script_abort
 	}
-	xml {
+	json {
 	    im_rest_error -http_status 401 -message "Not authenticated"
 	    return
 	}
@@ -35,12 +35,12 @@ if {0 == $user_id} {
 
 # Got a user already authenticated by Basic HTTP auth or auto-login
 switch $format {
-    xml {
-	set xml_p 1
-	set xml "<?xml version='1.0' encoding='UTF-8'?>\n<version>\n$version</version>\n"
+    json {
+	set json_p 1
+	set json "{\"success\": true, \"version\": \"$version\"}"
     }
     default {
-	set xml_p 0
+	set json_p 0
 	set page_title [lang::message::lookup "" intranet-rest "REST Version"]
 	set context_bar ""
     }

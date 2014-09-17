@@ -11,6 +11,182 @@ ad_library {
     @author frank.bergmann@project-open.com
 }
 
+
+# ----------------------------------------------------------------------
+# SQL Validator
+# ----------------------------------------------------------------------
+
+ad_proc -public im_rest_valid_sql {
+    -string:required
+    {-variables {} }
+    {-debug 1}
+} {
+    Returns 1 if "where_clause" is a valid where_clause or 0 otherwise.
+    ToDo:
+    <ul>
+    <li>Single quote quoting: Does not handle correctly 
+    </ul>
+} {
+    # An empty string is a valid SQL...
+    if {"" == $string} { return 1 }
+
+    # ------------------------------------------------------
+    # Massage the string so that it suits the rule engine.
+    # Reduce all characters to lower case
+    set string [string tolower $string]
+    # Add spaces around the string
+    set string " $string "
+    # Add an extra space between all "comparison" strings in the where clause
+    regsub -all {([\>\<\=\!]+)} $string { \1 } string
+    # Add an extra space around parentesis
+    regsub -all {([\(\)])} $string { \1 } string
+    # Add an extra space around kommas
+    regsub -all {(,)} $string { \1 } string
+    # Replace multiple spaces by a single one
+    regsub -all {\s+} $string { } string
+    # Eliminate leading space
+    if {" " == [string range $string 0 0]} { set string [string range $string 1 end] }
+
+    set result [sql_search_condition $string]
+    set parsed_term [lindex $result 0]
+    set remaining_string [string trim [lindex $result 1]]
+    set error_message [lindex $result 2]
+
+    # ad_return_complaint 1 "<pre>parsed=$parsed_term\nrem=$remaining_string\nerr=$error_message"
+
+    if {"" == $remaining_string} {
+	# Nothing remaining - everything is parsed correctly
+	return 1
+    } else {
+	# Something is left - error
+	return 0
+    }
+}
+
+
+
+ad_proc -public im_rest_valid_sql_disabled {
+    -string:required
+    {-variables {} }
+    {-debug 1}
+} {
+    Returns 1 if "where_clause" is a valid where_clause or 0 otherwise.
+    The validator is based on applying a number of rules using a rule engine.
+    Return the validation result if debug=1.
+} {
+    ns_log Notice "im_rest_valid_sql: sql=$string, vars=$variables"
+
+    # An empty string is a valid SQL...
+    if {"" == $string} { return 1 }
+
+    # ------------------------------------------------------
+    # Massage the string so that it suits the rule engine.
+
+    # Reduce all characters to lower case
+    set string [string tolower $string]
+
+    # Add spaces around the string
+    set string " $string "
+
+    # Replace ocurrences of double (escaped) single-ticks with "quote"
+    regsub -all {''} $string { quote } string
+
+    # Add an extra space between all "comparison" strings in the where clause
+    regsub -all {([\>\<\=\!]+)} $string { \1 } string
+
+    # Add an extra space around parentesis
+    regsub -all {([\(\)])} $string { \1 } string
+
+    # Add an extra space around kommas
+    regsub -all {(,)} $string { \1 } string
+
+    # Replace multiple spaces by a single one
+    regsub -all {\s+} $string { } string
+
+
+    # ------------------------------------------------------
+    # Rules have a format LHS <- RHS (Left Hand Side <- Right Hand Side)
+    set rules {
+	from {from [[:alnum:]_]+ [[:alnum:]_]+ ,}
+	where {from [[:alnum:]_]+ [[:alnum:]_]+ where}
+	query {select [[:alnum:]_]+}
+	query {from [[:alnum:]_]+}
+	query {where [[:alnum:]_]+ in \( query \)}
+	query {where cond}
+	query {query query}
+	query {query where val}
+	query {query val}
+	query {query \( val \)}
+	cond {val between val and val}
+	cond {cond and cond}
+	cond {cond and val}
+	cond {cond val}
+	cond {cond or cond}
+	cond {\( cond \)}
+	cond {val = val}
+	cond {val like val}
+	cond {[[:alnum:]_]+ like val}
+	cond {val > val}
+	cond {val >= val}
+	cond {val < val}
+	cond {val <= val}
+	cond {val <> val}
+	cond {val != val}
+	cond {val is null}
+	cond {[[:alnum:]_]+ @@ val}
+	cond {val is not null}
+	cond {val in \( val \)}
+	cond {val in \( query \)}
+	val  {val , val}
+	val  {val val}
+	val  {[0-9]+}
+	val  {[[:alnum:]_]+\.[[:alnum:]_]+}
+	val  {[0-9]+\-[0-9]+\-[0-9]+t[0-9]+\:[0-9]+\:[0-9]+}
+	val  {\'[[:alnum:]_\ \-\%\@\.]*\'}
+	val  {[[:alnum:]_]+ \( [[:alnum:]_]+ \)}
+    }
+
+    # Add rules for every variable saying that it's a var.
+    lappend variables member_id user_id group_id object_id_one object_id_two
+    foreach var $variables {
+	lappend rules val
+	lappend rules $var
+    }
+
+    # Applies a number of rules to a string, eventually rewriting
+    # the string into a single toplevel term.
+    # String is expected to have spaces around any payload, and 
+    # also each of its tokens surrounded by spaces
+    set fired 1
+    set debug_result ""
+    while {$fired} {
+	set fired 0
+	foreach {lhs rhs} $rules {
+	    set org_string $string
+	    incr fired [regsub -all " $rhs " $string " $lhs " string]
+	    if {$string != $org_string} {
+		append debug_result "$lhs -> $rhs: '$string'\n"
+		ns_log Notice "im_rest_valid_sql: $lhs -> $rhs: '$string'\n"
+	    }
+	}
+    }
+
+    set string [string trim $string]
+    set result 0
+    if {"" == $string || "cond" == $string || "query" == $string || "val" == $string} { set result 1 }
+
+    # Show the application of rules for debugging
+    if {$debug} { 
+	append debug_result "result=$result\n"
+	ns_log Notice "im_rest_valid_sql: result=$result"
+	# return $debug_result 
+    }
+
+    return $result
+}
+
+
+
 # ----------------------------------------------------------------------
 # SQL Parser
 # ----------------------------------------------------------------------

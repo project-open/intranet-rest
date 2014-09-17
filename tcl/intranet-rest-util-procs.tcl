@@ -79,74 +79,6 @@ ad_proc -private im_rest_header_extra_stuff {
 }
 
 
-ad_proc -private im_rest_cookie_auth_user_id {
-    {-debug 1}
-} {
-    Determine the user_id even if ns_conn doesn't work
-    in a HTTP PUT call
-} {
-    # Get the user_id from the ad_user_login cookie
-    set header_vars [ns_conn headers]
-    set cookie_string [ns_set get $header_vars Cookie]
-    set cookie_list [split $cookie_string ";"]
-    # ns_log Notice "im_rest_cookie_auth_user_id: cookie=$cookie_string\n"
-    # ns_log Notice "im_rest_cookie_auth_user_id: cookie_list=$cookie_list\n"
-
-
-    array set cookie_hash {}
-    foreach l $cookie_list {
-	if {[regexp {([^ =]+)\=(.+)} $l match key value]} {
-	    set key [ns_urldecode [string trim $key]]
-	    set value [ns_urldecode [string trim $value]]
-	    ns_log Notice "im_rest_cookie_auth_user_id: key=$key, value=$value"
-	    set cookie_hash($key) $value
-	}
-    }
-    set user_id ""
-
-    if {[info exists cookie_hash(ad_session_id)]} { 
-
-	set ad_session_id $cookie_hash(ad_session_id)
-        ns_log Notice "im_rest_cookie_auth_user_id: ad_session_id=$ad_session_id"
-
-	set user_id ""
-	catch { set user_id [ad_get_user_id] }
-
-	if {"" != $user_id} {
-	    ns_log Notice "im_rest_cookie_auth_user_id: found autenticated user_id: storing into cache"
-	    ns_cache set im_rest $ad_session_id $user_id    
-	    return $user_id
-	}
-	
-	if {[ns_cache get im_rest $ad_session_id value]} { 
-	    ns_log Notice "im_rest_cookie_auth_user_id: Didn't find autenticated user_id: returning cached value"
-	    return $value 
-	}
-    }
-
-    if {[info exists cookie_hash(ad_user_login)]} { 
-
-	set ad_user_login $cookie_hash(ad_user_login)
-        ns_log Notice "im_rest_cookie_auth_user_id: ad_user_login=$ad_user_login"
-
-	set user_id ""
-	catch { set user_id [ad_get_user_id] }
-	if {"" != $user_id} {
-	    ns_log Notice "im_rest_cookie_auth_user_id: found autenticated user_id: storing into cache"
-	    ns_cache set im_rest $ad_user_login $user_id    
-	    return $user_id
-	}
-	
-	if {[ns_cache get im_rest $ad_user_login value]} { 
-	    ns_log Notice "im_rest_cookie_auth_user_id: Didn't find autenticated user_id: returning cached value"
-	    return $value 
-	}
-    }
-    ns_log Notice "im_rest_cookie_auth_user_id: Didn't find any information, returning {}"
-    return ""
-}
-
-
 ad_proc -private im_rest_debug_headers {
     {-debug 1}
 } {
@@ -174,187 +106,12 @@ ad_proc -private im_rest_debug_headers {
 }
 
 
-
-ad_proc -private im_rest_authenticate {
-    {-debug 1}
-    {-format "xml" }
-    -query_hash_pairs:required
-} {
-    Determine the autenticated user
-} {
-    array set query_hash $query_hash_pairs
-    set header_vars [ns_conn headers]
-
-    # --------------------------------------------------------
-    # Check for token authentication
-    set token_user_id ""
-    set token_token ""
-    if {[info exists query_hash(user_id)]} { set token_user_id $query_hash(user_id)}
-    if {[info exists query_hash(auth_token)]} { set token_token $query_hash(auth_token)}
-    if {[info exists query_hash(auto_login)]} { set token_token $query_hash(auto_login)}
-
-    # Check if the token fits the user
-    if {"" != $token_user_id && "" != $token_token} {
-	if {![im_valid_auto_login_p -user_id $token_user_id -auto_login $token_token -check_user_requires_manual_login_p 0]} {
-	    set token_user_id ""
-	}
-    }
-
-    # --------------------------------------------------------
-    # Check for HTTP "basic" authorization
-    # Example: Authorization=Basic cHJvam9wOi5mcmFiZXI=
-    set basic_auth [ns_set get $header_vars "Authorization"]
-    set basic_auth_userpass ""
-    set basic_auth_username ""
-    set basic_auth_password ""
-    if {[regexp {^([a-zA-Z_]+)\ (.*)$} $basic_auth match method userpass_base64]} {
-	set basic_auth_userpass [base64::decode $userpass_base64]
-	regexp {^([^\:]+)\:(.*)$} $basic_auth_userpass match basic_auth_username basic_auth_password
-	if {$debug} { ns_log Notice "im_rest_authenticate: basic_auth: basic_auth_username=$basic_auth_username, basic_auth_password=$basic_auth_password" }
-    } else {
-	ns_log Notice "im_rest_authenticate: basic_auth: basic_auth=$basic_auth does not match with regexp"
-    }
-    set basic_auth_user_id [db_string userid "select user_id from users where lower(username) = lower(:basic_auth_username)" -default ""]
-    if {"" == $basic_auth_user_id} {
-	set basic_auth_user_id [db_string userid "select party_id from parties where lower(email) = lower(:basic_auth_username)" -default ""]
-    }
-    set basic_auth_password_ok_p undefined
-    if {"" != $basic_auth_user_id} {
-	set basic_auth_password_ok_p [ad_check_password $basic_auth_user_id $basic_auth_password]
-	if {!$basic_auth_password_ok_p} { set basic_auth_user_id "" }
-    }
-    if {$debug} { ns_log Notice "im_rest_authenticate: format=$format, basic_auth=$basic_auth, basic_auth_username=$basic_auth_username, basic_auth_password=$basic_auth_password, basic_auth_user_id=$basic_auth_user_id, basic_auth_password_ok_p=$basic_auth_password_ok_p" }
-
-
-    # --------------------------------------------------------
-    # Determine the user_id from cookie.
-    # Work around missing ns_conn user_id values in PUT and DELETE calls 
-    set cookie_auth_user_id [im_rest_cookie_auth_user_id]
-
-    # Determine authentication method used
-    set auth_method ""
-    if {"" != $cookie_auth_user_id && 0 != $cookie_auth_user_id } { set auth_method "cookie" }
-    if {"" != $token_token} { set auth_method "token" }
-    if {"" != $basic_auth_user_id} { set auth_method "basic" }
-
-    # --------------------------------------------------------
-    # Check if one of the methods was successful...
-    switch $auth_method {
-	cookie { set auth_user_id $cookie_auth_user_id }
-	token { set auth_user_id $token_user_id }
-	basic { set auth_user_id $basic_auth_user_id }
-	default { 
-	    return [im_rest_error -format $format -http_status 401 -message "No authentication found ('$auth_method')."] 
-	}
-    }
-
-    if {"" == $auth_user_id} { set auth_user_id 0 }
-    ns_log Notice "im_rest_authenticate: format=$format, auth_method=$auth_method, auth_user_id=$auth_user_id"
-
-    return [list user_id $auth_user_id method $auth_method]
-}
-
-
-
 ad_proc -private im_rest_system_url { } {
     Returns a the system's "official" URL without trailing slash
-    suitable to prefix all hrefs used for the XML format.
+    suitable to prefix all hrefs used for the JSON format.
 } {
     return [util_current_location]
 }
-
-
-ad_proc -private im_rest_format_line {
-    -format:required
-    -rest_otype:required
-    -column:required
-    -value:required
-} {
-    Format a single line according to format and return the result.
-} {
-    set base_url "[im_rest_system_url]/intranet-rest"
-    set rest_oid $value
-    if {"" == $rest_oid} { set rest_oid 0 }
-    if {[im_security_alert_check_integer -location im_rest_format_line -value $rest_oid]} { set rest_oid 0 }
-
-    # Transformation without knowing the rest_otype
-    set href ""
-    switch "${rest_otype}.${column}" {
-	im_project.company_id - im_timesheet_task.company_id - im_invoice.customer_id - im_timesheet_invoice.customer_id - im_trans_invoice.customer_id - im_invoice.provider_id - im_timesheet_invoice.provider_id - im_trans_invoice.provider_id - im_expense.customer_id - im_office.company_id - im_ticket.company_id {
-	    set company_name [util_memoize [list db_string cname1 "select company_name from im_companies where company_id=$rest_oid" -default $value]]
-	    switch $format {
-		html { set value "<a href=\"$base_url/im_company/$value?format=html\">$company_name</a>" }
-		xml { set href "$base_url/im_company/$value" }
-	    }
-	}
-	im_company.main_office_id - im_invoice.invoice_office_id - im_timesheet_invoice.invoice_office_id - im_trans_invoice.invoice_office_id {
-	    set office_name [util_memoize [list db_string cname2 "select office_name from im_offices where office_id=$rest_oid" -default $value]]
-	    switch $format {
-		html { set value "<a href=\"$base_url/im_office/$value?format=html\">$office_name</a>" }
-		xml { set href "$base_url/im_office/$value" }
-	    }
-	}
-	im_invoice.project_id - im_timesheet_invoice.project_id - im_trans_invoice.project_id - im_project.project_id - im_project.parent_id - im_project.program_id - im_timesheet_task.project_id - im_timesheet_task.parent_id - im_expense.project_id - im_ticket.project_id - im_ticket.parent_id - im_trans_task.project_id - im_invoice_item.project_id {
-	    set project_name [util_memoize [list db_string cname3 "select project_name from im_projects where project_id=$rest_oid" -default $value]]
-	    switch $format {
-		html { set value "<a href=\"$base_url/im_project/$value?format=html\">$project_name</a>" }
-		xml { set href "$base_url/im_project/$value" }
-	    }
-	}
-	im_project.project_lead_id - im_timesheet_task.project_lead_id - im_invoice.company_contact_id - im_timesheet_invoice.company_contact_id - im_trans_invoice.company_contact_id - im_project.company_contact_id - im_cost_center.manager_id - im_cost_center.parent_id - im_conf_item.conf_item_owner_id - im_expense.provider_id - im_ticket.ticket_customer_contact_id - im_user_absence.owner_id - im_project.creation_user - im_timesheet_task.creation_user - im_invoice.creation_user - im_timesheet_invoice.creation_user - im_trans_invoice.creation_user - im_cost_center.creation_user - im_conf_item.creation_user - im_expense.creation_user - im_ticket.creation_user - im_user_absence.creation_user {
-	    set user_name [im_name_from_user_id $value]
-	    switch $format {
-		html { set value "<a href=\"$base_url/user/$value?format=html\">$user_name</a>" }
-		xml { set href "$base_url/user/$value" }
-	    }
-	}
-	im_office.office_status_id - im_office.office_type_id - im_company.company_status_id - im_company.company_type_id - im_project.project_status_id - im_project.project_type_id - im_timesheet_task.project_status_id - im_timesheet_task.project_type_id - im_invoice.cost_status_id - im_invoice.cost_type_id - im_timesheet_invoice.cost_status_id - im_timesheet_invoice.cost_type_id - im_trans_invoice.cost_status_id - im_trans_invoice.cost_type_id - im_company.default_invoice_template_id - im_company.default_po_template_id - im_company.annual_revenue_id - im_company.default_delnote_template_id - im_company.default_bill_template_id - im_company.default_payment_method_id - im_invoice.template_id - im_timesheet_invoice.template_id - im_trans_invoice.template_id - im_invoice.payment_method_id - im_timesheet_invoice.payment_method_id - im_trans_invoice.payment_method_id - im_project.on_track_status_id - im_cost_center.cost_center_status_id - im_cost_center.cost_center_type_id - im_biz_object_member.object_role_id - im_conf_item.conf_item_status_id - im_conf_item.conf_item_type_id - im_expense.vat_type_id - im_expense.cost_status_id - im_expense.cost_type_id - im_expense.expense_type_id - im_expense.expense_payment_type_id - im_material.material_type_id - im_material.material_status_id - im_material.material_uom_id - im_release_item.release_status_id - im_rest_object_type.object_type_type_id - im_rest_object_type.object_type_status_id - im_ticket.ticket_status_id - im_ticket.ticket_type_id - im_ticket.project_status_id - im_ticket.project_type_id - im_timesheet_task.uom_id - im_trans_task.task_status_id - im_trans_task.task_type_id - im_trans_task.task_uom_id - im_trans_task.source_language_id - im_trans_task.target_language_id - im_trans_task.tm_integration_type_id - im_user_absence.absence_type_id - im_user_absence.absence_status_id - user.skin_id - im_invoice_item.item_uom_id - im_invoice_item.item_type_id - im_invoice_item.item_status_id {
-	    set category_name [im_category_from_id $value]
-	    switch $format {
-		html { set value "<a href=\"$base_url/im_category/$value?format=html\">$category_name</a>" }
-		xml { set href "$base_url/im_category/$value" }
-	    }
-
-	}
-	im_invoice.cost_center_id - im_timesheet_invoice.cost_center_id - im_trans_invoice.cost_center_id - im_expense.cost_center_id - im_timesheet_task.cost_center_id {
-	    if {"" == $value} { set value 0 }
-	    set cc_name [util_memoize [list db_string cname4 "select im_cost_center_name_from_id($value)" -default $value]]
-	    switch $format {
-		html { set value "<a href=\"$base_url/im_cost_center/$value?format=html\">$cc_name</a>" }
-		xml { set href "$base_url/im_cost_center/$value" }
-	    }
-	}
-	im_timesheet_task.material_id {
-	    if {"" == $value} { set value 0 }
-	    set material_name [util_memoize [list db_string cname5 "select im_material_name_from_id($value)" -default $value]]
-	    switch $format {
-		html { set value "<a href=\"$base_url/im_material/$value?format=html\">$material_name</a>" }
-		xml { set href "$base_url/im_material/$value" }
-	    }
-	}
-	im_invoice_item.invoice_id - im_timesheet_task.invoice_id {
-	    if {"" == $value} { set value 0 }
-	    set invoice_name [util_memoize [list db_string cname5 "select cost_name from im_costs where cost_id = $value" -default $value]]
-	    switch $format {
-		html { set value "<a href=\"$base_url/im_invoice/$value?format=html\">$invoice_name</a>" }
-		xml { set href "$base_url/im_invoice/$value" }
-	    }
-	}
-
-    }
-
-    switch $format {
-	html { return "<tr><td>$column</td><td>$value</td></tr>\n" }
-	xml { 
-	    if {"" != $href} {
-		return "<$column href=\"$href\">$value</$column>\n" 
-	    } else {
-		return "<$column>$value</$column>\n" 
-	    }
-	}
-    }
-}
-
 
 
 # ----------------------------------------------------------------------
@@ -698,7 +455,7 @@ ad_proc -public im_rest_object_type_index_columns {
 # ----------------------------------------------------------------------
 
 ad_proc -public im_rest_object_type_update_sql { 
-    { -format "xml" }
+    { -format "json" }
     -rest_otype:required
     -rest_oid:required
     -hash_array:required
@@ -792,188 +549,13 @@ ad_proc -public im_rest_object_type_update_sql {
 }
 
 
-
-# ----------------------------------------------------------------------
-# SQL Validator
-# ----------------------------------------------------------------------
-
-ad_proc -public im_rest_valid_sql {
-    -string:required
-    {-variables {} }
-    {-debug 1}
-} {
-    Returns 1 if "where_clause" is a valid where_clause or 0 otherwise.
-    ToDo:
-    <ul>
-    <li>Single quote quoting: Does not handle correctly 
-    </ul>
-} {
-    # An empty string is a valid SQL...
-    if {"" == $string} { return 1 }
-
-    # ------------------------------------------------------
-    # Massage the string so that it suits the rule engine.
-    # Reduce all characters to lower case
-    set string [string tolower $string]
-    # Add spaces around the string
-    set string " $string "
-    # Add an extra space between all "comparison" strings in the where clause
-    regsub -all {([\>\<\=\!]+)} $string { \1 } string
-    # Add an extra space around parentesis
-    regsub -all {([\(\)])} $string { \1 } string
-    # Add an extra space around kommas
-    regsub -all {(,)} $string { \1 } string
-    # Replace multiple spaces by a single one
-    regsub -all {\s+} $string { } string
-    # Eliminate leading space
-    if {" " == [string range $string 0 0]} { set string [string range $string 1 end] }
-
-    set result [sql_search_condition $string]
-    set parsed_term [lindex $result 0]
-    set remaining_string [string trim [lindex $result 1]]
-    set error_message [lindex $result 2]
-
-    # ad_return_complaint 1 "<pre>parsed=$parsed_term\nrem=$remaining_string\nerr=$error_message"
-
-    if {"" == $remaining_string} {
-	# Nothing remaining - everything is parsed correctly
-	return 1
-    } else {
-	# Something is left - error
-	return 0
-    }
-}
-
-
-
-ad_proc -public im_rest_valid_sql_disabled {
-    -string:required
-    {-variables {} }
-    {-debug 1}
-} {
-    Returns 1 if "where_clause" is a valid where_clause or 0 otherwise.
-    The validator is based on applying a number of rules using a rule engine.
-    Return the validation result if debug=1.
-} {
-    ns_log Notice "im_rest_valid_sql: sql=$string, vars=$variables"
-
-    # An empty string is a valid SQL...
-    if {"" == $string} { return 1 }
-
-    # ------------------------------------------------------
-    # Massage the string so that it suits the rule engine.
-
-    # Reduce all characters to lower case
-    set string [string tolower $string]
-
-    # Add spaces around the string
-    set string " $string "
-
-    # Replace ocurrences of double (escaped) single-ticks with "quote"
-    regsub -all {''} $string { quote } string
-
-    # Add an extra space between all "comparison" strings in the where clause
-    regsub -all {([\>\<\=\!]+)} $string { \1 } string
-
-    # Add an extra space around parentesis
-    regsub -all {([\(\)])} $string { \1 } string
-
-    # Add an extra space around kommas
-    regsub -all {(,)} $string { \1 } string
-
-    # Replace multiple spaces by a single one
-    regsub -all {\s+} $string { } string
-
-
-    # ------------------------------------------------------
-    # Rules have a format LHS <- RHS (Left Hand Side <- Right Hand Side)
-    set rules {
-	from {from [[:alnum:]_]+ [[:alnum:]_]+ ,}
-	where {from [[:alnum:]_]+ [[:alnum:]_]+ where}
-	query {select [[:alnum:]_]+}
-	query {from [[:alnum:]_]+}
-	query {where [[:alnum:]_]+ in \( query \)}
-	query {where cond}
-	query {query query}
-	query {query where val}
-	query {query val}
-	query {query \( val \)}
-	cond {val between val and val}
-	cond {cond and cond}
-	cond {cond and val}
-	cond {cond val}
-	cond {cond or cond}
-	cond {\( cond \)}
-	cond {val = val}
-	cond {val like val}
-	cond {[[:alnum:]_]+ like val}
-	cond {val > val}
-	cond {val >= val}
-	cond {val < val}
-	cond {val <= val}
-	cond {val <> val}
-	cond {val != val}
-	cond {val is null}
-	cond {[[:alnum:]_]+ @@ val}
-	cond {val is not null}
-	cond {val in \( val \)}
-	cond {val in \( query \)}
-	val  {val , val}
-	val  {val val}
-	val  {[0-9]+}
-	val  {[[:alnum:]_]+\.[[:alnum:]_]+}
-	val  {[0-9]+\-[0-9]+\-[0-9]+t[0-9]+\:[0-9]+\:[0-9]+}
-	val  {\'[[:alnum:]_\ \-\%\@\.]*\'}
-	val  {[[:alnum:]_]+ \( [[:alnum:]_]+ \)}
-    }
-
-    # Add rules for every variable saying that it's a var.
-    lappend variables member_id user_id group_id object_id_one object_id_two
-    foreach var $variables {
-	lappend rules val
-	lappend rules $var
-    }
-
-    # Applies a number of rules to a string, eventually rewriting
-    # the string into a single toplevel term.
-    # String is expected to have spaces around any payload, and 
-    # also each of its tokens surrounded by spaces
-    set fired 1
-    set debug_result ""
-    while {$fired} {
-	set fired 0
-	foreach {lhs rhs} $rules {
-	    set org_string $string
-	    incr fired [regsub -all " $rhs " $string " $lhs " string]
-	    if {$string != $org_string} {
-		append debug_result "$lhs -> $rhs: '$string'\n"
-		ns_log Notice "im_rest_valid_sql: $lhs -> $rhs: '$string'\n"
-	    }
-	}
-    }
-
-    set string [string trim $string]
-    set result 0
-    if {"" == $string || "cond" == $string || "query" == $string || "val" == $string} { set result 1 }
-
-    # Show the application of rules for debugging
-    if {$debug} { 
-	append debug_result "result=$result\n"
-	ns_log Notice "im_rest_valid_sql: result=$result"
-	# return $debug_result 
-    }
-
-    return $result
-}
-
-
 # ----------------------------------------------------------------------
 # Error Handling
 # ----------------------------------------------------------------------
 
 ad_proc -public im_rest_error {
     { -http_status 404 }
-    { -format "xml" }
+    { -format "json" }
     { -message "" }
 } {
     Returns a suitable REST error message
@@ -1005,15 +587,6 @@ ad_proc -public im_rest_error {
 		</table>[im_footer]
 	    " 
 	}
-	xml {  
-    doc_return $http_status "text/xml" "<?xml version='1.0' encoding='UTF-8'?>
-<error>
-<http_status>$http_status</http_status>
-<http_status_message>$status_message</http_status_message>
-<request>[ns_quotehtml $url]</request>
-<message>$message</message>
-</error>"
-	}
 	json {  
 	    # Calculate the total number of objects
 	    set result "{\"success\": false,\n\"message\": \"[im_quotejson $message]\"\n}"
@@ -1030,8 +603,8 @@ ad_proc -public im_rest_error {
 
 ad_proc -public im_rest_get_content {} {
     There's no [ns_conn content] so this is a hack to get the content of the
-    REST request. Taken from ns_xmlrpc.
-    @return string - the XML request
+    REST request. 
+    @return string - the request
     @author Dave Bauer
 } {
     # (taken from aol30/modules/tcl/form.tcl)
@@ -1040,7 +613,7 @@ ad_proc -public im_rest_get_content {} {
     # be thread/process safe.  Hence spin till success
     set fp ""
     while {$fp == ""} {
-        set filename "[ns_tmpnam][clock clicks -milliseconds].xmlrpc2"
+        set filename "[ns_tmpnam][clock clicks -milliseconds].rpc2"
         set fp [ns_openexcl $filename]
     }
 
@@ -1057,19 +630,19 @@ ad_proc -public im_rest_get_content {} {
     return $text
 }
 
-ad_proc -public im_rest_parse_xml_json_content {
+ad_proc -public im_rest_parse_json_content {
     { -format "" }
     { -content "" }
     { -rest_otype "" }
 } {
-    Parse the XML or JSON content of a POST request with 
+    Parse the JSON content of a POST request with 
     the values of the object to create or update.
     @author Frank Bergmann
 } {
     # Parse the HTTP content
     switch $format {
 	json {
-	    ns_log Notice "im_rest_parse_xml_json_content: going to parse json content=$content"
+	    ns_log Notice "im_rest_parse_json_content: going to parse json content=$content"
 	    # {"id":8799,"email":"bbigboss@tigerpond.com","first_names":"Ben","last_name":"Bigboss"}
 	    array set parsed_json [util::json::parse $content]
 	    set json_list $parsed_json(_object_)
@@ -1081,23 +654,8 @@ ad_proc -public im_rest_parse_xml_json_content {
 		if {"null" == $val} { set hash_array($var) "" }
 	    }
 	}
-	xml {
-	    # store the key-value pairs into a hash array
-	    ns_log Notice "im_rest_parse_xml_json_content: going to parse xml content=$content"
-	    if {[catch {set doc [dom parse $content]} err_msg]} {
-		return [im_rest_error -http_status 406 -message "Unable to parse XML: '$err_msg'."]
-	    }
-	    
-	    set root_node [$doc documentElement]
-	    array unset hash_array
-	    foreach child [$root_node childNodes] {
-		set nodeName [$child nodeName]
-		set nodeText [$child text]
-		set hash_array($nodeName) $nodeText
-	    }
-	}
 	default {
-	    return [im_rest_error -http_status 406 -message "Unknown format: '$format'. Expected: {xml|json}"]
+	    return [im_rest_error -http_status 406 -message "Unknown format: '$format'. Expected: {json}"]
 	}
     }
     return [array get hash_array]

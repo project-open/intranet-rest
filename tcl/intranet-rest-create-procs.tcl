@@ -34,7 +34,7 @@ ad_library {
 # -------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_project {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_project" }
@@ -44,8 +44,8 @@ ad_proc -private im_rest_post_object_type_im_project {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
 
     # write hash values as local variables
     foreach key [array names hash_array] {
@@ -117,7 +117,7 @@ ad_proc -private im_rest_post_object_type_im_project {
 # -------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_ticket {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_ticket" }
@@ -127,8 +127,8 @@ ad_proc -private im_rest_post_object_type_im_ticket {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
 
     # write hash values as local variables
     foreach key [array names hash_array] {
@@ -145,7 +145,7 @@ ad_proc -private im_rest_post_object_type_im_ticket {
 	set $key $value
     }
 
-    # Create optional variables if they haven't been specified in the XML request
+    # Create optional variables if they haven't been specified in the request
     if {![info exists project_nr]} { 
 	set project_nr [db_nextval "im_ticket_seq"] 
 	set hash_array(project_nr) $project_nr
@@ -244,7 +244,7 @@ ad_proc -private im_rest_post_object_type_im_ticket {
 # -------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_timesheet_task {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_timesheet_task" }
@@ -254,7 +254,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Store the XML values into local variables
+    # Store the values into local variables
     set planned_units ""
     set billable_units ""
     set cost_center_id ""
@@ -264,8 +264,8 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     set gantt_project_id ""
     set note ""
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
 
     # write hash values as local variables
     foreach key [array names hash_array] {
@@ -352,7 +352,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_trans_task {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_trans_task" }
@@ -362,8 +362,8 @@ ad_proc -private im_rest_post_object_type_im_trans_task {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
 
     # write hash values as local variables
     foreach key [array names hash_array] {
@@ -437,7 +437,7 @@ ad_proc -private im_rest_post_object_type_im_trans_task {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_company {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_company" }
@@ -447,8 +447,8 @@ ad_proc -private im_rest_post_object_type_im_company {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
 
     # write hash values as local variables
     foreach key [array names hash_array] {
@@ -590,7 +590,7 @@ ad_proc -private im_rest_post_object_type_im_company {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_user_absence {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_user_absence" }
@@ -600,8 +600,8 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -697,7 +697,7 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_user {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "user" }
@@ -713,8 +713,8 @@ ad_proc -private im_rest_post_object_type_user {
     unset user_id
 
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -891,7 +891,7 @@ ad_proc -private im_rest_post_object_type_user {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_invoice {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_invoice" }
@@ -901,7 +901,7 @@ ad_proc -private im_rest_post_object_type_im_invoice {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Store the XML key-value pairs into local variables
+    # Store the key-value pairs into local variables
     set note ""
     set amount 0
     set currency "EUR"
@@ -914,8 +914,8 @@ ad_proc -private im_rest_post_object_type_im_invoice {
     set effective_date [db_string effdate "select now()::date"]
 
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -993,7 +993,7 @@ ad_proc -private im_rest_post_object_type_im_invoice {
 
 
 ad_proc -private im_rest_post_object_type_im_trans_invoice {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_trans_invoice" }
@@ -1033,7 +1033,7 @@ ad_proc -private im_rest_post_object_type_im_trans_invoice {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_invoice_item {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_invoice_item" }
@@ -1052,8 +1052,8 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
     set project_id ""
 
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1133,7 +1133,7 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
 
 
 ad_proc -private im_rest_post_object_type_im_hour {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_hour" }
@@ -1144,8 +1144,8 @@ ad_proc -private im_rest_post_object_type_im_hour {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1224,7 +1224,7 @@ ad_proc -private im_rest_post_object_type_im_hour {
 # im_hour isn't a real object
 
 ad_proc -private im_rest_post_object_im_hour {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
@@ -1238,8 +1238,8 @@ ad_proc -private im_rest_post_object_im_hour {
 } {
     ns_log Notice "im_rest_post_object_im_hour: rest_oid=$rest_oid"
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1278,9 +1278,6 @@ ad_proc -private im_rest_post_object_im_hour {
 		</table>[im_footer]
 	    "
 	}
-	xml {  
-	    doc_return 200 "text/xml" "<?xml version='1.0'?>\n<object_id id=\"$rest_oid\">$rest_oid</object_id>\n" 
-	}
 	json {  
 	    # doc_return 200 "text/html" "{\"success\": true,\n\"object_id\": $rest_oid}"
 	    set data_list [list]
@@ -1305,7 +1302,7 @@ ad_proc -private im_rest_post_object_im_hour {
 
 
 ad_proc -private im_rest_post_object_type_im_hour_interval {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_hour_interval" }
@@ -1316,8 +1313,8 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
     set current_user_id $user_id
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1412,7 +1409,7 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
 # im_hour_interval isn't a real object
 
 ad_proc -private im_rest_post_object_im_hour_interval {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
@@ -1426,8 +1423,8 @@ ad_proc -private im_rest_post_object_im_hour_interval {
 } {
     ns_log Notice "im_rest_post_object_im_hour_interval: rest_oid=$rest_oid"
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1465,9 +1462,6 @@ ad_proc -private im_rest_post_object_im_hour_interval {
 		</table>[im_footer]
 	    "
 	}
-	xml {  
-	    doc_return 200 "text/xml" "<?xml version='1.0'?>\n<object_id id=\"$rest_oid\">$rest_oid</object_id>\n" 
-	}
 	json {  
 	    # doc_return 200 "text/html" "{\"success\": true,\n\"object_id\": $rest_oid}"
 	    set data_list [list]
@@ -1492,7 +1486,7 @@ ad_proc -private im_rest_post_object_im_hour_interval {
 #
 
 ad_proc -private im_rest_post_object_type_im_note {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
@@ -1509,8 +1503,8 @@ ad_proc -private im_rest_post_object_type_im_note {
     set creation_ip [ad_conn peeraddr]
 
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1573,7 +1567,7 @@ ad_proc -private im_rest_post_object_type_im_note {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_membership_rel {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "membership_rel" }
@@ -1583,15 +1577,15 @@ ad_proc -private im_rest_post_object_type_membership_rel {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Store XML values into local variables
+    # Store values into local variables
     set rel_type "membership_rel"
     set member_state "appoved"
     set creation_user $user_id
     set creation_ip [ad_conn peeraddr]
 
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1650,7 +1644,7 @@ ad_proc -private im_rest_post_object_type_membership_rel {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_biz_object_member {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_biz_object_member" }
@@ -1660,14 +1654,14 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Store XML values into local variables
+    # Store values into local variables
     set rel_type $rest_otype
     set creation_ip [ad_conn peeraddr]
     set sort_order ""
 
-    # Extract a key-value list of variables from XML or JSON POST request
-	ns_log Notice "im_rest_post_object_type_$rest_otype: Now parsing xml/json content ..."
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+	ns_log Notice "im_rest_post_object_type_$rest_otype: Now parsing json content ..."
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1740,7 +1734,7 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_ticket_ticket_rel" }
@@ -1750,14 +1744,14 @@ ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Store XML values into local variables
+    # Store values into local variables
     set rel_type $rest_otype
     set creation_ip [ad_conn peeraddr]
     set sort_order ""
 
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1817,7 +1811,7 @@ ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_key_account_rel {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_key_account_rel" }
@@ -1827,14 +1821,14 @@ ad_proc -private im_rest_post_object_type_im_key_account_rel {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Store XML values into local variables
+    # Store values into local variables
     set rel_type $rest_otype
     set creation_ip [ad_conn peeraddr]
     set sort_order ""
 
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables
@@ -1894,7 +1888,7 @@ ad_proc -private im_rest_post_object_type_im_key_account_rel {
 # --------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_company_employee_rel {
-    { -format "xml" }
+    { -format "json" }
     { -user_id 0 }
     { -content "" }
     { -rest_otype "im_company_employee_rel" }
@@ -1904,14 +1898,14 @@ ad_proc -private im_rest_post_object_type_im_company_employee_rel {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
 
-    # Store XML values into local variables
+    # Store values into local variables
     set rel_type $rest_otype
     set creation_ip [ad_conn peeraddr]
     set sort_order ""
 
 
-    # Extract a key-value list of variables from XML or JSON POST request
-    array set hash_array [im_rest_parse_xml_json_content -rest_otype $rest_otype -format $format -content $content]
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # write hash values as local variables

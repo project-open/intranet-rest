@@ -26,9 +26,9 @@ if {0 == $user_id} {
 	    ad_return_complaint 1 "Not authorized"
 	    ad_script_abort
 	}
-	xml {
-	    im_rest_error -http_status 401 -message "Not authenticated"
-	    return
+	default {
+	    im_rest_error -format $format -http_status 401 -message "Not authenticated"
+	    ad_script_abort
 	}
     }
 }
@@ -36,20 +36,31 @@ if {0 == $user_id} {
 # Got a user already authenticated by Basic HTTP auth or auto-login
 
 switch $format {
-    xml {
+    json {
 	# ---------------------------------------------------------
 	# Return the list of object types
 	# ---------------------------------------------------------
 	
-	set xml_p 1
-	set otype_sql "select object_type from acs_object_types"
-	set otype_xml ""
+	set json_p 1
+	set otype_sql "select * from acs_object_types aot order by object_type"
+	set otype_json ""
+	set otype_cnt 0
 	db_foreach otypes $otype_sql { 
-	    append otype_xml "<object_type href=\"[export_vars -base $rest_url/$object_type]\">$object_type</object_type>\n"
+	    incr otype_cnt
+	    lappend otype_json "{\"object_type\": \"$object_type\",\
+\"supertype\": \"$supertype\",\
+\"pretty_name\": \"$pretty_name\",\
+\"table_name\": \"$table_name\",\
+\"id_column\": \"$id_column\",\
+\"name_method\": \"$name_method\",\
+\"type_extension_table\": \"$type_extension_table\",\
+\"status_column\": \"$status_column\",\
+\"type_column\": \"$type_column\",\
+\"status_type_table\": \"$status_type_table\",\
+\"type_category_type\": \"$type_category_type\",\
+\"status_category_type\": \"$status_category_type\"}"
 	}
-
-	set xml "<?xml version='1.0' encoding='UTF-8'?>\n<object_types>\n$otype_xml</object_types>\n"
-
+	set json "{\"success\": true, \"total\": $otype_cnt, \"message\": \"im_rest_get_object_type: Data loaded\", \"data\": \[\n[join $otype_json ",\n"]\n\]}"
     }
     default {
 
@@ -57,10 +68,10 @@ switch $format {
 	# Continue as a normal HTML page
 	# ---------------------------------------------------------
 	
-	set xml_p 0
+	set json_p 0
 	set current_user_id [ad_maybe_redirect_for_registration]
 	set current_user_is_admin_p [im_is_user_site_wide_or_intranet_admin $current_user_id]
-	set page_title [lang::message::lookup "" intranet-rest.REST_API_Overview "REST API Overview"]
+	set page_title [lang::message::lookup "" intranet-rest.REST_API "REST API"]
 	set context_bar [im_context_bar $page_title]
 	
 	set toggle_url "/intranet/admin/toggle"

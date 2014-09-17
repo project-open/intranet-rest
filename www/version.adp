@@ -1,4 +1,4 @@
-<if @xml_p@>@xml;noquote@</if>
+<if @json_p@>@json;noquote@</if>
 <else>
 
 	<master>
