@@ -5,6 +5,7 @@
 # Author: Frank Bergmann
 # --------------------------------------------------------
 
+use strict;
 use ProjectOpen;
 use Data::Dumper;
 
@@ -12,15 +13,15 @@ use Data::Dumper;
 # Connection parameters:
 
 # Debug: 0=silent, 9=very verbose
-$debug = 1;
+my $debug = 5;
 
 # benbigboss/ben is a default user @ demo.project-open.net...
 #
 
-$rest_server = "demo.project-open.net";
-$rest_server = "192.168.21.128";
-$rest_email = "bbigboss\@tigerpond.com";
-$rest_password = "ben";
+my $rest_server = "demo.project-open.net";
+$rest_server = "localhost:8000";
+my $rest_email = "bbigboss\@tigerpond.com";
+my $rest_password = "ben";
 
 
 # Create a generic access object to query the ]po[ HTTP server
@@ -38,16 +39,20 @@ ProjectOpen->new (
 # As a result we will receive a hash reference with user_id -> <some reference>
 # We can then take the user_id to get more information about that user.
 #
-my $user_list = ProjectOpen->get_object_list("user", "cvs_user is not null and cvs_user != 'anonymous'");
-print Dumper($user_list) if ($debug > 5);
+my $user_json = ProjectOpen->get_object_list("user", "person_id > 10000");
+print "example.perl: " . Dumper($user_json) if ($debug > 5);
+my @users = @{$user_json->{'data'}};
 
 
 
 # -------------------------------------------------------
 # Get the group memberships for each user
 #
-for my $user_id (keys %$user_list) {
+foreach my $u (@users) {
 
+    my $user_id = $u->{'user_id'};
+    print "example.perl: user_id=" . $user_id . ", username=" .  $u->{'username'} . "\n";
+    
     # Get more information about the user
     my $user_hash = ProjectOpen->get_object("user", $user_id);
     print Dumper($user_hash) if ($debug > 5);

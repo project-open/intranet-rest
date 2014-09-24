@@ -1,8 +1,8 @@
 #----------------------------------------------------------------
 # ]project-open[ REST Interface
 #
-# (c) Frank Bergmann, 2010-10-31
-# Version 1.0.0
+# (c) Frank Bergmann, 2014-09-24
+# Version 3
 # Released under GPL V2.0 or higher
 #
 # $Id$
@@ -14,11 +14,12 @@ package ProjectOpen;
 use strict;
 use warnings;
 use Carp qw/carp croak/;
-use XML::Parser;
-use XML::Simple;
 use HTTP::Request;
 use LWP::UserAgent;
 use Data::Dumper;
+use JSON;
+
+use Class::Data::Inheritable;
 
 require Class::Data::Inheritable;
 require Class::Accessor;
@@ -29,7 +30,6 @@ use base qw/Class::Data::Inheritable Class::Accessor/;
 __PACKAGE__->mk_classdata("host");		# domain name of ]po[ REST host
 __PACKAGE__->mk_classdata("email");		# email of the user accessing
 __PACKAGE__->mk_classdata("password");		# password for email
-__PACKAGE__->mk_classdata("version");		# version of this filecurrent version number
 __PACKAGE__->mk_classdata("debug");		# 0=silent, 9=very verbose
 __PACKAGE__->mk_classdata("category_cache");	# Cache for category values
 __PACKAGE__->mk_classdata("object_cache");	# Cache for category values
@@ -38,7 +38,6 @@ __PACKAGE__->mk_classdata("object_cache");	# Cache for category values
 # provide a user bbigboss/ben with access to most REST objects.
 # 
 use constant DEFAULT_ARGS => (
-	"version" => "1.0.0",
 	"host" => "demo.project-open.net",
         "email" => "bbigboss\@tigerpond.com",
 	"password" => "ben",
@@ -79,7 +78,6 @@ sub new {
     $class->email($args->{email});
     $class->password($args->{password});
     $class->debug($args->{debug});
-    $class->version($args->{version});
 
     # Initialize caches for objects and categories
     $class->object_cache({});
@@ -118,12 +116,11 @@ sub _http_request {
     carp sprintf "ProjectOpen: request: HTTP request failed: %s", 
         $res->status_line unless $res->is_success;
 
-    # print STDERR sprintf "ProjectOpen.pm: content = %s\n", $res->content;
+    print STDERR sprintf "ProjectOpen: content=%s", $res->content if ($debug > 5);
 
-    # Parse the returned XML and return the result
-    my $xs = XML::Simple->new();
-    my $hash = $xs->XMLin($res->content); 
-    return $hash;
+    # Parse the returned data and return the result
+    my $json = decode_json($res->content);
+    return $json;
 }
 
 
@@ -133,7 +130,7 @@ sub _http_request {
 #	object_type:	]po[ object type ('im_project', 'im_conf_item', ...)
 #	sql_query:	A SQL query selecting out only objects that satisfy
 #			some condition. Ex: 'project_status_id=76' for 
-#			selecting only projects with status 'open'
+#			selecting only projects with status 'open'.
 #
 sub get_object_list {
     my $self = shift;
@@ -143,9 +140,13 @@ sub get_object_list {
     my $host = ProjectOpen->host;
     my $uri = URI->new("http://$host/intranet-rest/$object_type");
 
-    if (defined $sql_query) { $uri->query_form("query" => $sql_query); }
+    if (defined $sql_query) { 
+	$uri->query_form("query" => $sql_query, "format" => "json"); 
+    } else {
+	$uri->query_form("format" => "json"); 
+    }
     my $res = ProjectOpen->_http_request($uri);
-    $res = $res->{object_id};
+    return $res;
 }
 
 
@@ -164,21 +165,22 @@ sub get_object {
     # Check if we already got the value for this object_id
     # or get the value from the REST server
     my $o_cache = ProjectOpen->object_cache;
-    my $o_hash;
+    my $o_json;
 
     if (defined $o_cache->{$object_id}) { 
- 	$o_hash = $o_cache->{$object_id}; 
+ 	$o_json = $o_cache->{$object_id}; 
     } else {
 	# Get the object from the REST server
 	my $host = ProjectOpen->host;
-	my $uri = URI->new("http://$host/intranet-rest/$object_type/$object_id");
-	$o_hash = ProjectOpen->_http_request($uri);
+	my $uri = URI->new("http://$host/intranet-rest/$object_type/$object_id?format=json");
+	$uri->query_form("format" => "json"); 
+	$o_json = ProjectOpen->_http_request($uri);
 
 	# Store in cache
-	$o_cache->{$object_id} = $o_hash;
+	$o_cache->{$object_id} = $o_json;
     }
 
-    return $o_hash;
+    return $o_json;
 }
 
 # Get the string value of a category. Categories are a kind of constants in ]po[.
@@ -199,7 +201,7 @@ sub get_category {
  	$cat_hash = $cat_cache->{$category_id}; 
     } else {
 	# Get the category from the REST server
-	my $uri = URI->new("/intranet-rest/im_category/$category_id");
+	my $uri = URI->new("/intranet-rest/im_category/$category_id?format=json");
 	$cat_hash = ProjectOpen->_http_request($uri);
 
 	# Store in cache
@@ -224,11 +226,11 @@ sub get_group_memberships {
 
     # Don't cache this. These results are unlikely to be used again.
     my $host = ProjectOpen->host;
-    my $uri = URI->new("http://$host/intranet-reporting/view");
+    my $uri = URI->new("http://$host/intranet-reporting/view?format=json");
     $uri->query_form(
 		     "report_code" => "rest_group_membership", 
 		     "object_id" => $object_id,
-		     "format" => "xml"
+		     "format" => "json"
     );
     my $membership_hash = ProjectOpen->_http_request($uri);
     my $list = $membership_hash->{row};

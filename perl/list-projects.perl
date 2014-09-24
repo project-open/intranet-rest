@@ -15,7 +15,6 @@
 # Libraries
 #
 use strict;
-use XML::Parser;
 use LWP::UserAgent;
 use Data::Dumper;
 use JSON;
@@ -34,7 +33,7 @@ my $rest_password = "ben";					# Password for basic authentication
 
 
 # --------------------------------------------------------
-# Request the XML result
+# Request the result
 #
 print "list-projects.perl: Sending HTTP request to $rest_server/intranet-rest/im_project\n" if ($debug > 0);
 print "list-projects.perl: Using email=$rest_email and password=$rest_password\n" if ($debug > 0);
