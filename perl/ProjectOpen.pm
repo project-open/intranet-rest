@@ -232,9 +232,9 @@ sub get_group_memberships {
 		     "object_id" => $object_id,
 		     "format" => "json"
     );
-    my $membership_hash = ProjectOpen->_http_request($uri);
-    my $list = $membership_hash->{row};
-
+    my $membership_json = ProjectOpen->_http_request($uri);
+    my $list = $membership_json->{data};
+    
     return $list;
 }
 
