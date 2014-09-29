@@ -71,9 +71,13 @@ ad_proc -private im_rest_header_extra_stuff {
 	<link rel='stylesheet' href='/resources/acs-subsite/default-master.css' type='text/css' media='all'>
 	<link rel='stylesheet' href='/intranet/style/style.saltnpepper.css' type='text/css' media='screen'>
 	<link rel='stylesheet' href='/resources/acs-developer-support/acs-developer-support.css' type='text/css' media='all'> 
+	<link rel='stylesheet' href='/intranet/style/smartmenus/sm-core-css.css'  type='text/css' media='screen'>
+	<link rel='stylesheet' href='/intranet/style/smartmenus/sm-simple/sm-simple.css'  type='text/css' media='screen'>
+	<script type='text/javascript' src='/intranet/js/jquery.min.js'></script>
 	<script type='text/javascript' src='/intranet/js/showhide.js'></script>
 	<script type='text/javascript' src='/intranet/js/rounded_corners.inc.js'></script>
 	<script type='text/javascript' src='/resources/acs-subsite/core.js'></script>
+	<script type='text/javascript' src='/intranet/js/smartmenus/jquery.smartmenus.min.js'></script>
 	<script type='text/javascript' src='/intranet/js/style.saltnpepper.js'></script>
     "
 }
