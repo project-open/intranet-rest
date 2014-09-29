@@ -18,6 +18,7 @@ use HTTP::Request;
 use LWP::UserAgent;
 use Data::Dumper;
 use JSON;
+use Try::Tiny;
 
 use Class::Data::Inheritable;
 
@@ -119,7 +120,16 @@ sub _http_request {
     print STDERR sprintf "ProjectOpen: content=%s", $res->content if ($debug > 5);
 
     # Parse the returned data and return the result
-    my $json = decode_json($res->content);
+    my $json;
+    eval {
+	$json = decode_json($res->content);
+    };
+
+    if ($@) {
+	my $json_error = "{\"success\": false, \"message\": \"Error parsing JSON\"}";
+	$json = decode_json($json_error);
+    }
+    
     return $json;
 }
 
