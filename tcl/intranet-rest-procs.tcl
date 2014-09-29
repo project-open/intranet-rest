@@ -46,8 +46,8 @@ ad_proc -private im_rest_call_post {} {
 ad_proc -private im_rest_call_put {} {
     Handler for PUT rest calls
 } {
-    set user_id [im_rest_cookie_auth_user_id]
-    ns_log Notice "im_rest_call_put: user_id=$user_id"
+    set rest_user_id [im_rest_cookie_auth_user_id]
+    ns_log Notice "im_rest_call_put: rest_user_id=$rest_user_id"
     return [im_rest_call_get -http_method PUT]
 }
 
@@ -69,9 +69,6 @@ ad_proc -private im_rest_cookie_auth_user_id {
     set header_vars [ns_conn headers]
     set cookie_string [ns_set get $header_vars Cookie]
     set cookie_list [split $cookie_string ";"]
-    # ns_log Notice "im_rest_cookie_auth_user_id: cookie=$cookie_string\n"
-    # ns_log Notice "im_rest_cookie_auth_user_id: cookie_list=$cookie_list\n"
-
 
     array set cookie_hash {}
     foreach l $cookie_list {
@@ -82,24 +79,24 @@ ad_proc -private im_rest_cookie_auth_user_id {
 	    set cookie_hash($key) $value
 	}
     }
-    set user_id ""
+    set rest_user_id ""
 
     if {[info exists cookie_hash(ad_session_id)]} { 
 
 	set ad_session_id $cookie_hash(ad_session_id)
         ns_log Notice "im_rest_cookie_auth_user_id: ad_session_id=$ad_session_id"
 
-	set user_id ""
-	catch { set user_id [ad_get_user_id] }
+	set rest_user_id ""
+	catch { set rest_user_id [ad_get_user_id] }
 
-	if {"" != $user_id} {
-	    ns_log Notice "im_rest_cookie_auth_user_id: found autenticated user_id: storing into cache"
-	    ns_cache set im_rest $ad_session_id $user_id    
-	    return $user_id
+	if {"" != $rest_user_id} {
+	    ns_log Notice "im_rest_cookie_auth_user_id: found authenthicated rest_user_id: storing into cache"
+	    ns_cache set im_rest $ad_session_id $rest_user_id    
+	    return $rest_user_id
 	}
 	
 	if {[ns_cache get im_rest $ad_session_id value]} { 
-	    ns_log Notice "im_rest_cookie_auth_user_id: Didn't find autenticated user_id: returning cached value"
+	    ns_log Notice "im_rest_cookie_auth_user_id: Didn't find authenticated rest_user_id: returning cached value"
 	    return $value 
 	}
     }
@@ -109,16 +106,16 @@ ad_proc -private im_rest_cookie_auth_user_id {
 	set ad_user_login $cookie_hash(ad_user_login)
         ns_log Notice "im_rest_cookie_auth_user_id: ad_user_login=$ad_user_login"
 
-	set user_id ""
-	catch { set user_id [ad_get_user_id] }
-	if {"" != $user_id} {
-	    ns_log Notice "im_rest_cookie_auth_user_id: found autenticated user_id: storing into cache"
-	    ns_cache set im_rest $ad_user_login $user_id    
-	    return $user_id
+	set rest_user_id ""
+	catch { set rest_user_id [ad_get_user_id] }
+	if {"" != $rest_user_id} {
+	    ns_log Notice "im_rest_cookie_auth_user_id: found authenticated rest_user_id: storing into cache"
+	    ns_cache set im_rest $ad_user_login $rest_user_id    
+	    return $rest_user_id
 	}
 	
 	if {[ns_cache get im_rest $ad_user_login value]} { 
-	    ns_log Notice "im_rest_cookie_auth_user_id: Didn't find autenticated user_id: returning cached value"
+	    ns_log Notice "im_rest_cookie_auth_user_id: Didn't find authenticated rest_user_id: returning cached value"
 	    return $value 
 	}
     }
@@ -132,7 +129,7 @@ ad_proc -private im_rest_authenticate {
     {-format "json" }
     -query_hash_pairs:required
 } {
-    Determine the autenticated user
+    Determine the authenticated user
 } {
     array set query_hash $query_hash_pairs
     set header_vars [ns_conn headers]
@@ -228,7 +225,7 @@ ad_proc -private im_rest_call_get {
     array set query_hash {}
     foreach query_piece $query_pieces {
 	if {[regexp {^([^=]+)=(.+)$} $query_piece match var val]} {
-	    ns_log Notice "im_rest_call_get: var='$var', val='$val'"
+	    # ns_log Notice "im_rest_call_get: var='$var', val='$val'"
 
 	    # Additional decoding: replace "+" by " "
 	    regsub -all {\+} $var { } var
@@ -281,7 +278,7 @@ ad_proc -private im_rest_call_get {
 	im_rest_call \
 	    -method $http_method \
 	    -format $format \
-	    -user_id $auth_user_id \
+	    -rest_user_id $auth_user_id \
 	    -rest_otype $rest_otype \
 	    -rest_oid $rest_oid \
 	    -query_hash_pairs [array get query_hash]
@@ -298,7 +295,7 @@ ad_proc -private im_rest_call_get {
 ad_proc -private im_rest_page {
     { -rest_otype "index" }
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_oid "" }
     { -query_hash_pairs {} }
     { -debug 0 }
@@ -311,7 +308,7 @@ ad_proc -private im_rest_page {
 		    [list rest_otype $rest_otype] \
 		    [list rest_oid $rest_oid] \
 		    [list format $format] \
-		    [list user_id $user_id] \
+		    [list rest_user_id $rest_user_id] \
 		    [list query_hash_pairs $query_hash_pairs] \
     ]
 
@@ -332,7 +329,7 @@ ad_proc -private im_rest_page {
 ad_proc -private im_rest_call {
     { -method GET }
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
     { -query_hash_pairs {} }
@@ -340,7 +337,7 @@ ad_proc -private im_rest_call {
 } {
     Handler for all REST calls
 } {
-    ns_log Notice "im_rest_call: method=$method, format=$format, user_id=$user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_call: method=$method, format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
 
     # -------------------------------------------------------
     # Special treatment for /intranet-rest/ and /intranet/rest/index URLs
@@ -350,7 +347,7 @@ ad_proc -private im_rest_call {
     if {[lsearch $pages $rest_otype] >= 0} {
 	return [im_rest_page \
 		    -format $format \
-		    -user_id $user_id \
+		    -rest_user_id $rest_user_id \
 		    -rest_otype $rest_otype \
 		    -rest_oid $rest_oid \
 		    -query_hash_pairs $query_hash_pairs \
@@ -376,7 +373,7 @@ ad_proc -private im_rest_call {
 		im_category {
 		    return [im_rest_get_im_categories \
 				-format $format \
-				-user_id $user_id \
+				-rest_user_id $rest_user_id \
 				-rest_otype $rest_otype \
 				-rest_oid $rest_oid \
 				-query_hash_pairs $query_hash_pairs \
@@ -385,7 +382,7 @@ ad_proc -private im_rest_call {
 		im_dynfield_attribute {
 		    return [im_rest_get_im_dynfield_attributes \
 				-format $format \
-				-user_id $user_id \
+				-rest_user_id $rest_user_id \
 				-rest_otype $rest_otype \
 				-rest_oid $rest_oid \
 				-query_hash_pairs $query_hash_pairs \
@@ -394,7 +391,7 @@ ad_proc -private im_rest_call {
 		im_invoice_item {
 		    return [im_rest_get_im_invoice_items \
 				-format $format \
-				-user_id $user_id \
+				-rest_user_id $rest_user_id \
 				-rest_otype $rest_otype \
 				-rest_oid $rest_oid \
 				-query_hash_pairs $query_hash_pairs \
@@ -403,7 +400,7 @@ ad_proc -private im_rest_call {
 		im_hour {
 		    return [im_rest_get_im_hours \
 				-format $format \
-				-user_id $user_id \
+				-rest_user_id $rest_user_id \
 				-rest_otype $rest_otype \
 				-rest_oid $rest_oid \
 				-query_hash_pairs $query_hash_pairs \
@@ -412,7 +409,7 @@ ad_proc -private im_rest_call {
 		im_hour_interval {
 		    return [im_rest_get_im_hour_intervals \
 				-format $format \
-				-user_id $user_id \
+				-rest_user_id $rest_user_id \
 				-rest_otype $rest_otype \
 				-rest_oid $rest_oid \
 				-query_hash_pairs $query_hash_pairs \
@@ -422,7 +419,7 @@ ad_proc -private im_rest_call {
 		    # Return query from the object rest_otype
 		    return [im_rest_get_object_type \
 				-format $format \
-				-user_id $user_id \
+				-rest_user_id $rest_user_id \
 				-rest_otype $rest_otype \
 				-rest_oid $rest_oid \
 				-query_hash_pairs $query_hash_pairs \
@@ -438,7 +435,7 @@ ad_proc -private im_rest_call {
 		ns_log Notice "im_rest_call: Found a POST operation on object_type=$rest_otype with object_id=$rest_oid"
 		im_rest_post_object \
 		    -format $format \
-		    -user_id $user_id \
+		    -rest_user_id $rest_user_id \
 		    -rest_otype $rest_otype \
 		    -rest_oid $rest_oid \
 		    -query_hash_pairs $query_hash_pairs
@@ -447,7 +444,7 @@ ad_proc -private im_rest_call {
 		ns_log Notice "im_rest_call: Found a POST operation on object_type=$rest_otype"
 		im_rest_post_object_type \
 		    -format $format \
-		    -user_id $user_id \
+		    -rest_user_id $rest_user_id \
 		    -rest_otype $rest_otype \
 		    -query_hash_pairs $query_hash_pairs
 	    }
@@ -460,7 +457,7 @@ ad_proc -private im_rest_call {
 		ns_log Notice "im_rest_call: Found a DELETE operation on object_type=$rest_otype with object_id=$rest_oid"
 		im_rest_delete_object \
 		    -format $format \
-		    -user_id $user_id \
+		    -rest_user_id $rest_user_id \
 		    -rest_otype $rest_otype \
 		    -rest_oid $rest_oid \
 		    -query_hash_pairs $query_hash_pairs

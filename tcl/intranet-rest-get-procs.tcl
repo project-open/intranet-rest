@@ -13,7 +13,7 @@ ad_library {
 
 ad_proc -private im_rest_get_object_type {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
     { -query_hash_pairs {} }
@@ -22,8 +22,7 @@ ad_proc -private im_rest_get_object_type {
     Handler for GET rest calls on a whole object type -
     mapped to queries on the specified object type
 } {
-    set current_user_id $user_id
-    ns_log Notice "im_rest_get_object_type: format=$format, user_id=$current_user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_get_object_type: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
 
     array set query_hash $query_hash_pairs
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = '$rest_otype'" -default 0]]
@@ -35,6 +34,8 @@ ad_proc -private im_rest_get_object_type {
     set deref_p 0
     if {[info exists query_hash(deref_p)]} { set deref_p $query_hash(deref_p) }
     im_security_alert_check_integer -location "im_rest_get_object: deref_p" -value $deref_p
+
+    set base_url "[im_rest_system_url]/intranet-rest"
 
     set chars_to_be_escaped_list [list \
 				      "\"" "\\\"" \\ \\\\ \b \\b \f \\f \n \\n \r \\r \t \\t \
@@ -57,21 +58,18 @@ ad_proc -private im_rest_get_object_type {
 
     # -------------------------------------------------------
     # Get some more information about the current object type
-    db_1row rest_otype_info "
-	select	*
-	from	acs_object_types
-	where	object_type = :rest_otype
-    "
-
+    set otype_info [util_memoize [list db_list_of_lists rest_otype_info "select table_name, id_column from acs_object_types where object_type = '$rest_otype'"]]
+    set table_name [lindex [lindex $otype_info 0] 0]
+    set id_column [lindex [lindex $otype_info 0] 1]
     if {"" == $table_name} {
 	im_rest_error -format $format -http_status 500 -message "Invalid DynField configuration: Object type '$rest_otype' doesn't have a table_name specified in table acs_object_types."
     }
-
-    set base_url "[im_rest_system_url]/intranet-rest"
-
+    # Deal with ugly situation that usre_id is defined multiple times for object_type=user
+    if {"users" == $table_name} { set id_column "person_id" }
+    
     # -------------------------------------------------------
     # Check for generic permissions to read all objects of this type
-    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $current_user_id -privilege "read"]
+    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
 
     # Deny completely access to the object type?
     set rest_otype_read_none_p 0
@@ -80,17 +78,18 @@ ad_proc -private im_rest_get_object_type {
 	# There are "view_xxx_all" permissions allowing a user to see all objects:
 	switch $rest_otype {
 	    bt_bug		{ }
-	    im_company		{ set rest_otype_read_all_p [im_permission $current_user_id "view_companies_all"] }
-	    im_cost		{ set rest_otype_read_all_p [im_permission $current_user_id "view_finance"] }
-	    im_conf_item	{ set rest_otype_read_all_p [im_permission $current_user_id "view_conf_items_all"] }
-	    im_invoices		{ set rest_otype_read_all_p [im_permission $current_user_id "view_finance"] }
-	    im_project		{ set rest_otype_read_all_p [im_permission $current_user_id "view_projects_all"] }
-	    im_user_absence	{ set rest_otype_read_all_p [im_permission $current_user_id "view_absences_all"] }
-	    im_office		{ set rest_otype_read_all_p [im_permission $current_user_id "view_offices_all"] }
-	    im_ticket		{ set rest_otype_read_all_p [im_permission $current_user_id "view_tickets_all"] }
-	    im_timesheet_task	{ set rest_otype_read_all_p [im_permission $current_user_id "view_timesheet_tasks_all"] }
-	    im_timesheet_invoices { set rest_otype_read_all_p [im_permission $current_user_id "view_finance"] }
-	    im_trans_invoices	{ set rest_otype_read_all_p [im_permission $current_user_id "view_finance"] }
+	    im_company		{ set rest_otype_read_all_p [im_permission $rest_user_id "view_companies_all"] }
+	    im_cost		{ set rest_otype_read_all_p [im_permission $rest_user_id "view_finance"] }
+	    im_conf_item	{ set rest_otype_read_all_p [im_permission $rest_user_id "view_conf_items_all"] }
+	    im_invoices		{ set rest_otype_read_all_p [im_permission $rest_user_id "view_finance"] }
+	    im_project		{ set rest_otype_read_all_p [im_permission $rest_user_id "view_projects_all"] }
+	    im_user_absence	{ set rest_otype_read_all_p [im_permission $rest_user_id "view_absences_all"] }
+	    im_office		{ set rest_otype_read_all_p [im_permission $rest_user_id "view_offices_all"] }
+	    im_profile		{ set rest_otype_read_all_p 1 }
+	    im_ticket		{ set rest_otype_read_all_p [im_permission $rest_user_id "view_tickets_all"] }
+	    im_timesheet_task	{ set rest_otype_read_all_p [im_permission $rest_user_id "view_timesheet_tasks_all"] }
+	    im_timesheet_invoices { set rest_otype_read_all_p [im_permission $rest_user_id "view_finance"] }
+	    im_trans_invoices	{ set rest_otype_read_all_p [im_permission $rest_user_id "view_finance"] }
 	    im_translation_task	{ }
 	    user		{ }
 	    default { 
@@ -156,11 +155,11 @@ ad_proc -private im_rest_get_object_type {
 	}
 	file_storage_object {
 	    # file storage object needs additional security
-	    lappend where_clause_unchecked_list "'t' = acs_permission__permission_p(o.object_id, $current_user_id, 'read')"
+	    lappend where_clause_unchecked_list "'t' = acs_permission__permission_p(o.object_id, $rest_user_id, 'read')"
 	}
 	im_ticket {
 	    # Testing per-ticket permissions
-	    set read_sql [im_ticket_permission_read_sql -user_id $current_user_id]
+	    set read_sql [im_ticket_permission_read_sql -user_id $rest_user_id]
 	    lappend where_clause_unchecked_list "o.object_id in ($read_sql)"
 	}
     }
@@ -221,13 +220,15 @@ ad_proc -private im_rest_get_object_type {
 
 	# Check permissions
 	set read_p $rest_otype_read_all_p
-
+	
 	if {!$read_p} {
+
+	    
 	    # This is one of the "custom" object types - check the permission:
 	    # This may be quite slow checking 100.000 objects one-by-one...
 	    catch {
-		ns_log Notice "im_rest_get_object_type: Checking for individual permissions: ${rest_otype}_permissions $current_user_id $rest_oid"
-		eval "${rest_otype}_permissions $current_user_id $rest_oid view_p read_p write_p admin_p"
+		ns_log Notice "im_rest_get_object_type: Checking for individual permissions: ${rest_otype}_permissions $rest_user_id $rest_oid"
+		eval "${rest_otype}_permissions $rest_user_id $rest_oid view_p read_p write_p admin_p"
 
 		if {!$read_p && "" != $rest_oid} {
 		    im_rest_error -format $format -http_status 403 -message "User does not have read access to this object"
@@ -248,6 +249,8 @@ ad_proc -private im_rest_get_object_type {
 		    eval "set a $$v"
 		    set a [string map $chars_to_be_escaped_list $a]
                     append dereferenced_result ", \"$v\": \"$a\""
+
+		    ns_log Notice "im_rest_get_object_type: var=$v, value=$a"
 		}
 		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[string map $chars_to_be_escaped_list $object_name]\"$dereferenced_result}" 
 	    }
@@ -288,19 +291,22 @@ ad_proc -private im_rest_get_object_type {
 
 ad_proc -private im_rest_get_im_invoice_items {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
+    { -rest_oid "" }
     { -query_hash_pairs {} }
     { -debug 0 }
 } {
     Handler for GET rest calls on invoice items.
 } {
-    ns_log Notice "im_rest_get_invoice_items: format=$format, user_id=$user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_get_invoice_items: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
 
     array set query_hash $query_hash_pairs
+    if {"" != $rest_oid} { set query_hash(item_id) $rest_oid }
+    
     set base_url "[im_rest_system_url]/intranet-rest"
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_invoice'" -default 0]]
-    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $user_id -privilege "read"]
+    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
 
 
     # -------------------------------------------------------
@@ -337,8 +343,8 @@ ad_proc -private im_rest_get_im_invoice_items {
 
 	# Check permissions
 	set read_p $rest_otype_read_all_p
-	if {!$read_p} { set read_p [im_permission $user_id "view_finance"] }
-	if {!$read_p} { im_invoice_permissions $user_id $invoice_id view_p read_p write_p admin_p }
+	if {!$read_p} { set read_p [im_permission $rest_user_id "view_finance"] }
+	if {!$read_p} { im_invoice_permissions $rest_user_id $invoice_id view_p read_p write_p admin_p }
 	if {!$read_p} { continue }
 
 	set url "$base_url/$rest_otype/$rest_oid"
@@ -378,7 +384,7 @@ ad_proc -private im_rest_get_im_invoice_items {
 
 ad_proc -private im_rest_get_im_hours {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
     { -query_hash_pairs {} }
@@ -386,7 +392,7 @@ ad_proc -private im_rest_get_im_hours {
 } {
     Handler for GET rest calls on timesheet hours
 } {
-    ns_log Notice "im_rest_get_im_hours: format=$format, user_id=$user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_get_im_hours: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
 
     array set query_hash $query_hash_pairs
     if {"" != $rest_oid} { set query_hash(hour_id) $rest_oid }
@@ -397,10 +403,10 @@ ad_proc -private im_rest_get_im_hours {
     # unless he's got the view_hours_all privilege or explicitely 
     # the perms on the im_hour object type
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_hour'" -default 0]]
-    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $user_id -privilege "read"]
-    if {[im_permission $user_id "view_hours_all"]} { set rest_otype_read_all_p 1 }
+    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
+    if {[im_permission $rest_user_id "view_hours_all"]} { set rest_otype_read_all_p 1 }
 
-    set owner_perm_sql "and h.user_id = :user_id"
+    set owner_perm_sql "and h.user_id = :rest_user_id"
     if {$rest_otype_read_all_p} { set owner_perm_sql "" }
 
     # -------------------------------------------------------
@@ -509,7 +515,7 @@ ad_proc -private im_rest_get_im_hours {
 
 ad_proc -private im_rest_get_im_hour_intervals {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
     { -query_hash_pairs {} }
@@ -517,7 +523,7 @@ ad_proc -private im_rest_get_im_hour_intervals {
 } {
     Handler for GET rest calls on timesheet hour intervals
 } {
-    ns_log Notice "im_rest_get_im_hour_intervals: format=$format, user_id=$user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_get_im_hour_intervals: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
 
     array set query_hash $query_hash_pairs
     if {"" != $rest_oid} { set query_hash(interval_id) $rest_oid }
@@ -528,10 +534,10 @@ ad_proc -private im_rest_get_im_hour_intervals {
     # unless he's got the view_hours_all privilege or explicitely 
     # the perms on the im_hour_interval object type
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_hour_interval'" -default 0]]
-    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $user_id -privilege "read"]
-    if {[im_permission $user_id "view_hours_all"]} { set rest_otype_read_all_p 1 }
+    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
+    if {[im_permission $rest_user_id "view_hours_all"]} { set rest_otype_read_all_p 1 }
 
-    set owner_perm_sql "and h.user_id = :user_id"
+    set owner_perm_sql "and h.user_id = :rest_user_id"
     if {$rest_otype_read_all_p} { set owner_perm_sql "" }
 
     # -------------------------------------------------------
@@ -632,22 +638,22 @@ ad_proc -private im_rest_get_im_hour_intervals {
 
 ad_proc -private im_rest_get_im_categories {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -query_hash_pairs {} }
     { -debug 0 }
 } {
     Handler for GET rest calls on invoice items.
 } {
-    ns_log Notice "im_rest_get_categories: format=$format, user_id=$user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_get_categories: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
     array set query_hash $query_hash_pairs
     set base_url "[im_rest_system_url]/intranet-rest"
 
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_category'" -default 0]]
-    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $user_id -privilege "read"]
+    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
 
     # Get locate for translation
-    set locale [lang::user::locale -user_id $user_id]
+    set locale [lang::user::locale -rest_user_id $rest_user_id]
 
     # -------------------------------------------------------
     # Valid variables to return for im_category
@@ -758,19 +764,19 @@ ad_proc -private im_rest_get_im_categories {
 
 ad_proc -private im_rest_get_im_dynfield_attributes {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -query_hash_pairs {} }
     { -debug 0 }
 } {
     Handler for GET rest calls on dynfield attributes
 } {
-    ns_log Notice "im_rest_get_im_dynfield_attributes: format=$format, user_id=$user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_get_im_dynfield_attributes: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
     array set query_hash $query_hash_pairs
     set base_url "[im_rest_system_url]/intranet-rest"
 
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_dynfield_attribute'" -default 0]]
-    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $user_id -privilege "read"]
+    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
 
     # -------------------------------------------------------
     # Check if there is a where clause specified in the URL and validate the clause.

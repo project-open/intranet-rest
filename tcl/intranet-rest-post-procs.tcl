@@ -17,7 +17,7 @@ ad_library {
 
 ad_proc -private im_rest_post_object_type {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
     { -query_hash_pairs {} }
@@ -25,26 +25,26 @@ ad_proc -private im_rest_post_object_type {
 } {
     Handler for POST rest calls to an object type - create a new object.
 } {
-    ns_log Notice "im_rest_post_object_type: format=$format, user_id=$user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_post_object_type: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
 
     set base_url "[im_rest_system_url]/intranet-rest"
 
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = '$rest_otype'" -default 0]]
-    set rest_otype_write_all_p [im_object_permission -object_id $rest_otype_id -user_id $user_id -privilege "create"]
+    set rest_otype_write_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "create"]
 
     # Get the content of the HTTP POST request
     set content [im_rest_get_content]
-
-    ns_log Notice "im_rest_post_object_type: $rest_otype: [llength [info commands im_rest_post_object_type_$rest_otype]]"
+    ns_log Notice "im_rest_post_object_type: content='$content'"
 
     # Switch to object specific procedures for handling new object creation
     # Check if the procedure exists.
+    ns_log Notice "im_rest_post_object_type: $rest_otype: [llength [info commands im_rest_post_object_type_$rest_otype]]"
     if {0 != [llength [info commands im_rest_post_object_type_$rest_otype]]} {
 	
 	ns_log Notice "im_rest_post_object_type: Before calling im_rest_post_object_type_$rest_otype"
 	array set hash_array [eval [list im_rest_post_object_type_$rest_otype \
 		  -format $format \
-		  -user_id $user_id \
+		  -rest_user_id $rest_user_id \
 		  -content $content \
 		  -rest_otype $rest_otype \
 	]]
@@ -100,7 +100,7 @@ ad_proc -private im_rest_post_object_type {
 
 ad_proc -private im_rest_post_object {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
     { -query_hash_pairs {} }
@@ -109,21 +109,21 @@ ad_proc -private im_rest_post_object {
     Handler for POST rest calls to an individual object:
     Update the specific object using a generic update procedure
 } {
-    set current_user_id $user_id
-    ns_log Notice "im_rest_post_object: rest_otype=$rest_otype, rest_oid=$rest_oid, user_id=$user_id, format='$format', query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_post_object: rest_otype=$rest_otype, rest_oid=$rest_oid, rest_user_id=$rest_user_id, format='$format', query_hash=$query_hash_pairs"
 
     # Get the content of the HTTP POST request
     set content [im_rest_get_content]
+    ns_log Notice "im_rest_post_object: content='$content'"
 
     # Permissions for the object type
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = '$rest_otype'" -default 0]]
-    set write_p [im_object_permission -object_id $rest_otype_id -user_id $current_user_id -privilege "read"]
+    set write_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
     if {!$write_p} { return }
 
     # Check if there is an object type specific permission checker
     if {0 != [llength [info commands ${rest_otype}_permissions]]} {
 	catch {
-	    eval "${rest_otype}_permissions $current_user_id $rest_oid view_p read_p write_p admin_p"
+	    eval "${rest_otype}_permissions $rest_user_id $rest_oid view_p read_p write_p admin_p"
 	}
     }
     if {!$write_p} { return }
@@ -134,7 +134,7 @@ ad_proc -private im_rest_post_object {
 	ns_log Notice "im_rest_post_object: found a customized POST handler for rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
 	set rest_oid [eval [list im_rest_post_object_$rest_otype \
 		  -format $format \
-		  -user_id $user_id \
+		  -rest_user_id $rest_user_id \
 		  -rest_otype $rest_otype \
 		  -rest_oid $rest_oid \
 		  -query_hash_pairs $query_hash_pairs \
@@ -148,7 +148,7 @@ ad_proc -private im_rest_post_object {
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
 
     # Audit + Callback before updating the object
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action before_update
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action before_update
 
     # Update the object. This routine will return a HTTP error in case 
     # of a database constraint violation
@@ -161,7 +161,7 @@ ad_proc -private im_rest_post_object {
     ns_log Notice "im_rest_post_object: After im_rest_object_type_update_sql"
 
     # Audit + Callback after updating the object
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_update
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_update
 
 
     # The update was successful - return a suitable message.
@@ -196,13 +196,174 @@ ad_proc -private im_rest_post_object {
 
 
 
+
+
+# --------------------------------------------------------
+# im_hours
+#
+# Update operation. This is implemented here, because
+# im_hour isn't a real object
+
+ad_proc -private im_rest_post_object_im_hour {
+    { -format "json" }
+    { -rest_user_id 0 }
+    { -rest_otype "" }
+    { -rest_oid "" }
+    { -content "" }
+    { -debug 0 }
+    { -query_hash_pairs ""}
+} {
+    Handler for POST calls on particular im_hour objects.
+    im_hour is not a real object type and performs a "delete" 
+    operation specifying hours=0 or hours="".
+} {
+    ns_log Notice "im_rest_post_object_im_hour: rest_oid=$rest_oid"
+
+    # Permissions
+    # ToDo
+
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
+    ns_log Notice "im_rest_post_object_$rest_otype: hash_array=[array get hash_array]"
+
+    # write hash values as local variables
+    foreach key [array names hash_array] {
+	set value $hash_array($key)
+	set $key $value
+    }
+
+    set hours $hash_array(hours)
+    set hour_id $hash_array(hour_id)
+    if {"" == $hours || 0.0 == $hours} {
+	# Delete the hour instead of updating it.
+	# im_hours is not a real object, so we don't need to
+	# cleanup acs_objects.
+	ns_log Notice "im_rest_post_object_im_hour: deleting hours because hours='$hours', hour_id=$hour_id"
+	db_dml del_hours "delete from im_hours where hour_id = :hour_id"
+    } else {
+	# Update the object. This routine will return a HTTP error in case 
+	# of a database constraint violation
+	ns_log Notice "im_rest_post_object_im_hour: Before updating hours=$hours with hour_id=$hour_id"
+	im_rest_object_type_update_sql \
+	    -rest_otype $rest_otype \
+	    -rest_oid $rest_oid \
+	    -hash_array [array get hash_array]
+	ns_log Notice "im_rest_post_object_im_hour: After updating hours=$hours with hour_id=$hour_id"
+    }
+
+    # The update was successful - return a suitable message.
+    switch $format {
+	html { 
+	    set page_title "object_type: $rest_otype"
+	    doc_return 200 "text/html" "
+		[im_header $page_title][im_navbar]<table>
+		<tr class=rowtitle><td class=rowtitle>Object ID</td></tr>
+		<tr<td>$rest_oid</td></tr>
+		</table>[im_footer]
+	    "
+	}
+	json {  
+	    # doc_return 200 "text/html" "{\"success\": true,\n\"object_id\": $rest_oid}"
+	    set data_list [list]
+	    foreach key [array names hash_array] {
+		set value $hash_array($key)
+		lappend data_list "\"$key\": \"[im_quotejson $value]\""
+	    }
+
+	    set data "\[{[join $data_list ", "]}\]"
+	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
+	    doc_return 200 "text/html" $result
+	}
+    }
+}
+
+# --------------------------------------------------------
+# im_hour_intervals
+#
+# Update operation. This is implemented here, because
+# im_hour_interval isn't a real object
+
+ad_proc -private im_rest_post_object_im_hour_interval {
+    { -format "json" }
+    { -rest_user_id 0 }
+    { -rest_otype "" }
+    { -rest_oid "" }
+    { -content "" }
+    { -debug 0 }
+    { -query_hash_pairs ""}
+} {
+    Handler for POST calls on particular im_hour_interval objects.
+    im_hour_interval is not a real object type and performs a "delete" 
+    operation when interval_start = interval_end
+} {
+    ns_log Notice "im_rest_post_object_im_hour_interval: rest_oid=$rest_oid"
+
+    # Permissions
+    # ToDo
+
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
+    ns_log Notice "im_rest_post_object_$rest_otype: hash_array=[array get hash_array]"
+
+    # write hash values as local variables
+    foreach key [array names hash_array] {
+	set value $hash_array($key)
+	set $key $value
+    }
+
+    set interval_id $hash_array(interval_id)
+    if {$interval_start == $interval_end} {
+	# Delete the hour_interval instead of updating it.
+	# im_hour_intervals is not a real object, so we don't need to
+	# cleanup acs_objects.
+	ns_log Notice "im_rest_post_object_im_hour_interval: deleting hours because interval_start = interval_end = $interval_start', interval_id=$interval_id"
+	db_dml del_hours "delete from im_hour_intervals where interval_id = :interval_id"
+    } else {
+	# Update the object. This routine will return a HTTP error in case 
+	# of a database constraint violation
+	ns_log Notice "im_rest_post_object_im_hour_interval: Before updating interval_id=$interval_id"
+	im_rest_object_type_update_sql \
+	    -rest_otype $rest_otype \
+	    -rest_oid $rest_oid \
+	    -hash_array [array get hash_array]
+	ns_log Notice "im_rest_post_object_im_hour_interval: After updating interval_id=$interval_id"
+    }
+
+    # The update was successful - return a suitable message.
+    switch $format {
+	html { 
+	    set page_title "object_type: $rest_otype"
+	    doc_return 200 "text/html" "
+		[im_header $page_title][im_navbar]<table>
+		<tr class=rowtitle><td class=rowtitle>Object ID</td></tr>
+		<tr<td>$rest_oid</td></tr>
+		</table>[im_footer]
+	    "
+	}
+	json {  
+	    # doc_return 200 "text/html" "{\"success\": true,\n\"object_id\": $rest_oid}"
+	    set data_list [list]
+	    foreach key [array names hash_array] {
+		set value $hash_array($key)
+		lappend data_list "\"$key\": \"[im_quotejson $value]\""
+	    }
+
+	    set data "\[{[join $data_list ", "]}\]"
+	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
+	    doc_return 200 "text/html" $result
+	}
+    }
+}
+
+
+
 # --------------------------------------------------------
 # DELETE
 # --------------------------------------------------------
 
 ad_proc -private im_rest_delete_object {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
     { -query_hash_pairs {} }
@@ -211,15 +372,15 @@ ad_proc -private im_rest_delete_object {
     Handler for DELETE rest calls to an individual object:
     Update the specific object using a generic update procedure
 } {
-    ns_log Notice "im_rest_delete_object: rest_otype=$rest_otype, rest_oid=$rest_oid, user_id=$user_id, format='$format', query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_delete_object: rest_otype=$rest_otype, rest_oid=$rest_oid, rest_user_id=$rest_user_id, format='$format', query_hash=$query_hash_pairs"
 
     # Get the content of the HTTP DELETE request
     set content [im_rest_get_content]
     ns_log Notice "im_rest_delete_object: content=$content"
 
     # Only administrators have the right to DELETE
-    if {![im_user_is_admin_p $user_id]} {
-	im_rest_error -format $format -http_status 401 -message "User #$user_id is not a system administrator. You need admin rights to perform a DELETE."
+    if {![im_user_is_admin_p $rest_user_id]} {
+	im_rest_error -format $format -http_status 401 -message "User #$rest_user_id is not a system administrator. You need admin rights to perform a DELETE."
     }
 
     # Deal with certain subtypes
@@ -236,7 +397,7 @@ ad_proc -private im_rest_delete_object {
     # Destroy the object. Try first with an object_type_nuke TCL procedure.
     set destroyed_err_msg ""
     if {[catch {
-	set nuke_tcl [list "${nuke_otype}_nuke" -current_user_id $user_id $rest_oid]
+	set nuke_tcl [list "${nuke_otype}_nuke" -current_user_id $rest_user_id $rest_oid]
 	ns_log Notice "im_rest_delete_object: nuke_tcl=$nuke_tcl"
 	eval $nuke_tcl
     } err_msg]} {
@@ -276,7 +437,7 @@ ad_proc -private im_rest_delete_object {
 	if {$destructor_exists_p} {
 	    db_string destruct_object "select $destructor_name($rest_oid) from dual"
 	} else {
-	    set nuke_tcl [list "${nuke_otype}_nuke" -current_user_id $user_id $rest_oid]
+	    set nuke_tcl [list "${nuke_otype}_nuke" -current_user_id $rest_user_id $rest_oid]
 	    ns_log Notice "im_rest_delete_object: nuke_tcl=$nuke_tcl"
 	    eval $nuke_tcl
 	}

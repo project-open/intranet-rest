@@ -35,33 +35,46 @@ ad_library {
 
 ad_proc -private im_rest_post_object_type_im_project {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_project" }
     { -rest_otype_pretty "Project" }
 } {
     Create a new object and return the object_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
+    # Permissions
+    set add_projects_p [im_permissions $rest_user_id "add_projects"]
+    if {!$add_projects_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
+    
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
 
-    # write hash values as local variables
-    foreach key [array names hash_array] {
-	set value $hash_array($key)
-	ns_log Notice "im_rest_post_object_type_$rest_otype: key=$key, value=$value"
-	set $key $value
-    }
-
     # Check that all required variables are there
-    set required_vars {project_name project_nr project_path company_id parent_id project_status_id project_type_id}
+    set required_vars {project_name project_nr}
     foreach var $required_vars {
-	if {![info exists $var]} { 
+	if {![info exists hash_array($var)]} { 
 	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
 	}
     }
 
+    # Default values for not required vars
+    if {![info exists hash_array(project_path)]} { set hash_array(project_path) $hash_array(project_nr) }
+    if {![info exists hash_array(company_id)]} { set hash_array(company_id) [im_company_internal] }
+    if {![info exists hash_array(parent_id)]} { set hash_array(parent_id) "" }
+    if {![info exists hash_array(project_status_id)]} { set hash_array(project_status_id) [im_project_status_open] }
+    if {![info exists hash_array(project_type_id)]} { set hash_array(project_type_id) [im_project_type_consulting] }
+    if {![info exists hash_array(start_date)]} { set hash_array(start_date) [util_memoize [list db_string y "select to_char(now(), 'YYYY-01-01')"]] }
+    if {![info exists hash_array(end_date)]} { set hash_array(end_date) [util_memoize [list db_string y "select to_char(now(), 'YYYY-12-31')"]] }
+
+    set project_name $hash_array(project_name)
+    set project_nr $hash_array(project_nr)
+    set project_path $hash_array(project_path)
+    set parent_id $hash_array(parent_id)
+    
     # Check for duplicate
     set parent_sql "parent_id = :parent_id"
     if {"" == $parent_id} { set parent_sql "parent_id is NULL" }
@@ -80,7 +93,7 @@ ad_proc -private im_rest_post_object_type_im_project {
 
     if {[catch {
 	set rest_oid [im_project::new \
-			-creation_user		$user_id \
+			-creation_user		$rest_user_id \
 			-context_id		"" \
 			-project_name		$hash_array(project_name) \
 			-project_nr		$hash_array(project_nr) \
@@ -99,13 +112,15 @@ ad_proc -private im_rest_post_object_type_im_project {
 	    -rest_otype $rest_otype \
 	    -rest_oid $rest_oid \
 	    -hash_array [array get hash_array]
-
     } err_msg]} {
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
     # Write Audit Trail
     im_project_audit -project_id $rest_oid -action after_create  
+
+    # Add the creating user as a member, so that he's got the right to modify the project if he is not a privileged user
+    im_biz_object_add_role $rest_user_id $rest_oid [im_biz_object_role_project_manager]
     
     set hash_array(rest_oid) $rest_oid
     return [array get hash_array]
@@ -118,14 +133,20 @@ ad_proc -private im_rest_post_object_type_im_project {
 
 ad_proc -private im_rest_post_object_type_im_ticket {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_ticket" }
     { -rest_otype_pretty "Ticket" }
 } {
     Create a new object and return its object_id
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_tickets_p [im_permissions $rest_user_id "add_tickets"]
+    if {!$add_tickets_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create tickets"] 
+    }
 
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
@@ -245,15 +266,21 @@ ad_proc -private im_rest_post_object_type_im_ticket {
 
 ad_proc -private im_rest_post_object_type_im_timesheet_task {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_timesheet_task" }
     { -rest_otype_pretty "Timesheet Task" }
 } {
     Create a new object and return its object_id
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_timesheet_tasks"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
+    
     # Store the values into local variables
     set planned_units ""
     set billable_units ""
@@ -283,8 +310,14 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     }
 
     # More checks
-    if {"" == $parent_id} { return [im_rest_error -format $format -http_status 406 -message "Variable 'parent_id' is not a valid project_id."] }
-
+    if {"" == $parent_id} {
+	return [im_rest_error -format $format -http_status 406 -message "Variable 'parent_id' is not a valid project_id."]
+    }
+    # Check if the user has write permissions on the parent_id project
+    im_project_permissions $rest_user_id $parent_id view_p read_p write_p admin_p
+    if {!$write_p} {
+	return [im_rest_error -format $format -http_status 406 -message "User #$rest_user_id does not have write permissions on parent project #$parent_id."]
+    }
 
     # Check for duplicates
     set dup_sql "
@@ -307,7 +340,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 			null,			-- p_task_id
 			'im_timesheet_task',	-- object_type
 			now(),			-- creation_date
-			:user_id,		-- creation_user
+			:rest_user_id,		-- creation_user
 			'[ad_conn peeraddr]',	-- creation_ip
 			null,			-- context_id
 	
@@ -339,7 +372,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
     
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(task_id) $rest_oid
@@ -353,15 +386,19 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 
 ad_proc -private im_rest_post_object_type_im_trans_task {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_trans_task" }
     { -rest_otype_pretty "Translation Task" }
 } {
     Create a new object and return the object_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
+    # Permissions:
+    # No specific permission required to create translation tasks.
+    # Just write permissions on the project
+    
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
 
@@ -378,6 +415,12 @@ ad_proc -private im_rest_post_object_type_im_trans_task {
 	if {![info exists $var]} { 
 	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
 	}
+    }
+
+    # Check if the user has write permissions on the parent_id project
+    im_project_permissions $rest_user_id $project_id view_p read_p write_p admin_p
+    if {!$write_p} {
+	return [im_rest_error -format $format -http_status 406 -message "User #$rest_user_id does not have write permissions on parent project #$project_id."]
     }
 
     # Check for duplicate
@@ -398,7 +441,7 @@ ad_proc -private im_rest_post_object_type_im_trans_task {
 			null,			-- task_id
 			'im_trans_task',	-- object_type
 			now(),			-- creation_date
-			:user_id,		-- creation_user
+			:rest_user_id,		-- creation_user
 			'[ns_conn peeraddr]',	-- creation_ip	
 			null,			-- context_id	
 
@@ -424,7 +467,7 @@ ad_proc -private im_rest_post_object_type_im_trans_task {
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
     
     set hash_array(rest_oid) $rest_oid
     set hash_array(task_id) $rest_oid
@@ -438,14 +481,20 @@ ad_proc -private im_rest_post_object_type_im_trans_task {
 
 ad_proc -private im_rest_post_object_type_im_company {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_company" }
     { -rest_otype_pretty "Company" }
 } {
     Create a new Company and return the company_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_companies"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create companies"] 
+    }
 
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
@@ -553,7 +602,7 @@ ad_proc -private im_rest_post_object_type_im_company {
 			null,			-- task_id
 			'im_company',		-- object_type
 			now(),			-- creation_date
-			:user_id,		-- creation_user
+			:rest_user_id,		-- creation_user
 			'[ns_conn peeraddr]',	-- creation_ip	
 			null,			-- context_id	
 			:company_name,
@@ -577,7 +626,7 @@ ad_proc -private im_rest_post_object_type_im_company {
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
     
     set hash_array(rest_oid) $rest_oid
     set hash_array(company_id) $rest_oid
@@ -591,14 +640,22 @@ ad_proc -private im_rest_post_object_type_im_company {
 
 ad_proc -private im_rest_post_object_type_im_user_absence {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_user_absence" }
     { -rest_otype_pretty "User Absence" }
 } {
     Create a new User Absence and return the company_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_absences"]
+    set add_all_p [im_permissions $rest_user_id "add_absences_all"]
+    set add_direct_reports_p [im_permissions $rest_user_id "add_absences_direct_reports"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create absences"] 
+    }
 
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
@@ -620,6 +677,14 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
 	}
     }
+
+    # Advanced permissions are necessary to log absences for others
+    if {$rest_user_id != $owner_id} {
+	if {!$add_all_p} {
+	    return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create absences for users other than himself"]
+	}
+	# ToDo: Deal with privilesges add_absences_direct_reports and add_absences_all
+    }  
 
     # Check for duplicate
     set dup_sql "
@@ -643,7 +708,7 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 			:absence_id,
 			'im_user_absence',
 			now(),
-			:user_id,
+			:rest_user_id,
 			'[ns_conn peeraddr]',
 			null,
 
@@ -685,7 +750,7 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
     
     set hash_array(rest_oid) $rest_oid
     set hash_array(absence_id) $rest_oid
@@ -698,7 +763,7 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 
 ad_proc -private im_rest_post_object_type_user {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "user" }
     { -rest_otype_pretty "User" }
@@ -707,11 +772,11 @@ ad_proc -private im_rest_post_object_type_user {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: Started"
 
-    # Make sure we don't get confused with the generic user_id
-    # We will call the ID of the new user new_user_id
-    set current_user_id $user_id
-    unset user_id
-
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_users"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create users"] 
+    }
 
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
@@ -799,7 +864,7 @@ ad_proc -private im_rest_post_object_type_user {
 	# Update creation user to allow the creator to admin the user
 	db_dml update_creation_user_id "
 		update acs_objects
-		set creation_user = :current_user_id
+		set creation_user = :rest_user_id
 		where object_id = :new_user_id
 	"
     
@@ -815,9 +880,9 @@ ad_proc -private im_rest_post_object_type_user {
 		-url $url \
 		-email $email
 	    
-	    ns_log Notice "im_rest_post_object_type_user: acs_user::update -user_id=$new_user_id -screen_name=$screen_name"
+	    ns_log Notice "im_rest_post_object_type_user: acs_user::update -rest_user_id=$new_user_id -screen_name=$screen_name"
 	    acs_user::update \
-		-user_id $new_user_id \
+		-rest_user_id $new_user_id \
 		-screen_name $screen_name \
 		-username $username
 
@@ -876,7 +941,7 @@ ad_proc -private im_rest_post_object_type_user {
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $new_user_id -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $new_user_id -action after_create
 
     set rest_oid $new_user_id
 
@@ -892,14 +957,20 @@ ad_proc -private im_rest_post_object_type_user {
 
 ad_proc -private im_rest_post_object_type_im_invoice {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_invoice" }
     { -rest_otype_pretty "Financial Document" }
 } {
     Create a new Financial Document and return the task_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_invoices"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create invoices"] 
+    }
 
     # Store the key-value pairs into local variables
     set note ""
@@ -949,7 +1020,7 @@ ad_proc -private im_rest_post_object_type_im_invoice {
 			NULL,			-- invoice_id
 			'im_invoice',		-- object_type
 			now(),			-- creation_date 
-			:user_id,		-- creation_user
+			:rest_user_id,		-- creation_user
 			'[ad_conn peeraddr]',	-- creation_ip
 			null,			-- context_id
 
@@ -984,7 +1055,7 @@ ad_proc -private im_rest_post_object_type_im_invoice {
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
     
     set hash_array(rest_oid) $rest_oid
     set hash_array(invoice_id) $rest_oid
@@ -994,18 +1065,25 @@ ad_proc -private im_rest_post_object_type_im_invoice {
 
 ad_proc -private im_rest_post_object_type_im_trans_invoice {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_trans_invoice" }
     { -rest_otype_pretty "Translation Financial Document" }
 } {
     Create a new object and return the object_id
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_invoices"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create translation invoices"] 
+    }
+    
     set rest_oid [ \
 		       im_rest_post_object_type_im_trans_invoice \
 			-format $format \
-    			-user_id $user_id \
+    			-rest_user_id $rest_user_id \
 			-content $content \
 			-rest_otype $rest_otype \
 			-rest_otype_pretty $rest_otype_pretty \
@@ -1015,11 +1093,11 @@ ad_proc -private im_rest_post_object_type_im_trans_invoice {
     "
     db_dml update_trans_invoice "
 	update	acs_objects
-	set	object_type = 'im_trans_invoice"
+	set	object_type = 'im_trans_invoice'
 	where	object_id = :rest_oid
     "
 
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(invoice_id) $rest_oid
@@ -1034,14 +1112,20 @@ ad_proc -private im_rest_post_object_type_im_trans_invoice {
 
 ad_proc -private im_rest_post_object_type_im_invoice_item {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_invoice_item" }
     { -rest_otype_pretty "Financial Document Item" }
 } {
     Create a new Financial Document line and return the item_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_invoices"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create invoice items"] 
+    }
 
     # store the key-value pairs into a hash array
     set description ""
@@ -1118,7 +1202,7 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
     im_invoice_update_rounded_amount -invoice_id $invoice_id 
 
     # No audit here, invoice_item is not a real object
-    # im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    # im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(item_id) $rest_oid
@@ -1134,15 +1218,21 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
 
 ad_proc -private im_rest_post_object_type_im_hour {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_hour" }
     { -rest_otype_pretty "Timesheet Hour" }
 } {
     Create a new Timesheet Hour line and return the item_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_hours"]
+    set add_all_p [im_permissions $rest_user_id "add_hours_all"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create hours"] 
+    }
 
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
@@ -1163,6 +1253,13 @@ ad_proc -private im_rest_post_object_type_im_hour {
 	}
     }
 
+    # Hour permissions
+    if {$user_id != $rest_user_id} {
+	if {!$add_all_p} {
+	    return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create hours for others than himself"] 
+	}
+    }
+    
     # Check for duplicate
     set dup_sql "
 		select  count(*)
@@ -1209,90 +1306,12 @@ ad_proc -private im_rest_post_object_type_im_hour {
     }
 
     # Not a real object, so no audit!
-    # im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    # im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(hour_id) $rest_oid
     return [array get hash_array]
 }
-
-
-# --------------------------------------------------------
-# im_hours
-#
-# Update operation. This is implemented here, because
-# im_hour isn't a real object
-
-ad_proc -private im_rest_post_object_im_hour {
-    { -format "json" }
-    { -user_id 0 }
-    { -rest_otype "" }
-    { -rest_oid "" }
-    { -content "" }
-    { -debug 0 }
-    { -query_hash_pairs ""}
-} {
-    Handler for POST calls on particular im_hour objects.
-    im_hour is not a real object type and performs a "delete" 
-    operation specifying hours=0 or hours="".
-} {
-    ns_log Notice "im_rest_post_object_im_hour: rest_oid=$rest_oid"
-
-    # Extract a key-value list of variables from JSON POST request
-    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
-    ns_log Notice "im_rest_post_object_$rest_otype: hash_array=[array get hash_array]"
-
-    # write hash values as local variables
-    foreach key [array names hash_array] {
-	set value $hash_array($key)
-	set $key $value
-    }
-
-    set hours $hash_array(hours)
-    set hour_id $hash_array(hour_id)
-    if {"" == $hours || 0.0 == $hours} {
-	# Delete the hour instead of updating it.
-	# im_hours is not a real object, so we don't need to
-	# cleanup acs_objects.
-	ns_log Notice "im_rest_post_object_im_hour: deleting hours because hours='$hours', hour_id=$hour_id"
-	db_dml del_hours "delete from im_hours where hour_id = :hour_id"
-    } else {
-	# Update the object. This routine will return a HTTP error in case 
-	# of a database constraint violation
-	ns_log Notice "im_rest_post_object_im_hour: Before updating hours=$hours with hour_id=$hour_id"
-	im_rest_object_type_update_sql \
-	    -rest_otype $rest_otype \
-	    -rest_oid $rest_oid \
-	    -hash_array [array get hash_array]
-	ns_log Notice "im_rest_post_object_im_hour: After updating hours=$hours with hour_id=$hour_id"
-    }
-
-    # The update was successful - return a suitable message.
-    switch $format {
-	html { 
-	    set page_title "object_type: $rest_otype"
-	    doc_return 200 "text/html" "
-		[im_header $page_title][im_navbar]<table>
-		<tr class=rowtitle><td class=rowtitle>Object ID</td></tr>
-		<tr<td>$rest_oid</td></tr>
-		</table>[im_footer]
-	    "
-	}
-	json {  
-	    # doc_return 200 "text/html" "{\"success\": true,\n\"object_id\": $rest_oid}"
-	    set data_list [list]
-	    foreach key [array names hash_array] {
-		set value $hash_array($key)
-		lappend data_list "\"$key\": \"[im_quotejson $value]\""
-	    }
-
-	    set data "\[{[join $data_list ", "]}\]"
-	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
-	    doc_return 200 "text/html" $result
-	}
-    }
-}
-
 
 
 # --------------------------------------------------------
@@ -1303,16 +1322,22 @@ ad_proc -private im_rest_post_object_im_hour {
 
 ad_proc -private im_rest_post_object_type_im_hour_interval {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_hour_interval" }
     { -rest_otype_pretty "Timesheet Hour" }
 } {
     Create a new Timesheet Hour line and return the item_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
-    set current_user_id $user_id
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_projects"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
+
+    
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
@@ -1344,7 +1369,7 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     }
 
     # Permission Check: Only log hours for yourself
-    if {$user_id != $current_user_id} { 
+    if {$user_id != $rest_user_id} { 
 	return [im_rest_error -format $format -http_status 403 -message "You can log hours only for yourself."] 
     }
 
@@ -1394,90 +1419,12 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     }
 
     # Not a real object, so no audit!
-    # im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    # im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(interval_id) $rest_oid
     return [array get hash_array]
 }
-
-
-# --------------------------------------------------------
-# im_hour_intervals
-#
-# Update operation. This is implemented here, because
-# im_hour_interval isn't a real object
-
-ad_proc -private im_rest_post_object_im_hour_interval {
-    { -format "json" }
-    { -user_id 0 }
-    { -rest_otype "" }
-    { -rest_oid "" }
-    { -content "" }
-    { -debug 0 }
-    { -query_hash_pairs ""}
-} {
-    Handler for POST calls on particular im_hour_interval objects.
-    im_hour_interval is not a real object type and performs a "delete" 
-    operation when interval_start = interval_end
-} {
-    ns_log Notice "im_rest_post_object_im_hour_interval: rest_oid=$rest_oid"
-
-    # Extract a key-value list of variables from JSON POST request
-    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
-    ns_log Notice "im_rest_post_object_$rest_otype: hash_array=[array get hash_array]"
-
-    # write hash values as local variables
-    foreach key [array names hash_array] {
-	set value $hash_array($key)
-	set $key $value
-    }
-
-    set interval_id $hash_array(interval_id)
-    if {$interval_start == $interval_end} {
-	# Delete the hour_interval instead of updating it.
-	# im_hour_intervals is not a real object, so we don't need to
-	# cleanup acs_objects.
-	ns_log Notice "im_rest_post_object_im_hour_interval: deleting hours because interval_start = interval_end = $interval_start', interval_id=$interval_id"
-	db_dml del_hours "delete from im_hour_intervals where interval_id = :interval_id"
-    } else {
-	# Update the object. This routine will return a HTTP error in case 
-	# of a database constraint violation
-	ns_log Notice "im_rest_post_object_im_hour_interval: Before updating interval_id=$interval_id"
-	im_rest_object_type_update_sql \
-	    -rest_otype $rest_otype \
-	    -rest_oid $rest_oid \
-	    -hash_array [array get hash_array]
-	ns_log Notice "im_rest_post_object_im_hour_interval: After updating interval_id=$interval_id"
-    }
-
-    # The update was successful - return a suitable message.
-    switch $format {
-	html { 
-	    set page_title "object_type: $rest_otype"
-	    doc_return 200 "text/html" "
-		[im_header $page_title][im_navbar]<table>
-		<tr class=rowtitle><td class=rowtitle>Object ID</td></tr>
-		<tr<td>$rest_oid</td></tr>
-		</table>[im_footer]
-	    "
-	}
-	json {  
-	    # doc_return 200 "text/html" "{\"success\": true,\n\"object_id\": $rest_oid}"
-	    set data_list [list]
-	    foreach key [array names hash_array] {
-		set value $hash_array($key)
-		lappend data_list "\"$key\": \"[im_quotejson $value]\""
-	    }
-
-	    set data "\[{[join $data_list ", "]}\]"
-	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
-	    doc_return 200 "text/html" $result
-	}
-    }
-}
-
-
 
 
 
@@ -1487,7 +1434,7 @@ ad_proc -private im_rest_post_object_im_hour_interval {
 
 ad_proc -private im_rest_post_object_type_im_note {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -rest_otype "" }
     { -rest_oid "" }
     { -content "" }
@@ -1499,7 +1446,13 @@ ad_proc -private im_rest_post_object_type_im_note {
 } {
     ns_log Notice "im_rest_post_object_im_note: rest_oid=$rest_oid"
 
-    set creation_user $user_id
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_projects"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
+
+    set creation_user $rest_user_id
     set creation_ip [ad_conn peeraddr]
 
 
@@ -1553,7 +1506,7 @@ ad_proc -private im_rest_post_object_type_im_note {
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
    
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -status_id $note_status_id -type_id $note_type_id -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $note_status_id -type_id $note_type_id -action after_create
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
@@ -1568,19 +1521,27 @@ ad_proc -private im_rest_post_object_type_im_note {
 
 ad_proc -private im_rest_post_object_type_membership_rel {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "membership_rel" }
     { -rest_otype_pretty "Membership Relationship" }
 } {
     Create a new object and return the object_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_projects"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
+
+
 
     # Store values into local variables
     set rel_type "membership_rel"
     set member_state "appoved"
-    set creation_user $user_id
+    set creation_user $rest_user_id
     set creation_ip [ad_conn peeraddr]
 
 
@@ -1623,7 +1584,7 @@ ad_proc -private im_rest_post_object_type_membership_rel {
 			:object_id_one,
 			:object_id_two,
 			:member_state,
-			:user_id,		-- creation_user
+			:rest_user_id,		-- creation_user
 			'[ns_conn peeraddr]'
 		)
 	"]
@@ -1631,7 +1592,7 @@ ad_proc -private im_rest_post_object_type_membership_rel {
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
    
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
@@ -1645,14 +1606,21 @@ ad_proc -private im_rest_post_object_type_membership_rel {
 
 ad_proc -private im_rest_post_object_type_im_biz_object_member {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_biz_object_member" }
     { -rest_otype_pretty "Ticket-Ticket Relationship" }
 } {
     Create a new object and return the object_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_projects"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
+
 
     # Store values into local variables
     set rel_type $rest_otype
@@ -1708,7 +1676,7 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
 					:object_id_two,
 					:object_role_id,	-- full member, project manager, key account manger, ...
 					:percentage,		-- percentage of assignment
-					:user_id,		-- Creation user
+					:rest_user_id,		-- Creation user
 					'[ns_conn peeraddr]'	-- Connection IP address for audit
 				)
 	    	"]
@@ -1717,7 +1685,7 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
 			return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
 		}
    
-		im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+		im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
     } else {
 		ns_log Notice "im_rest_post_object_type_$rest_otype: im_biz_object_member__new skipped, found rest_oid: $rest_oid"
 	}
@@ -1735,14 +1703,20 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
 
 ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_ticket_ticket_rel" }
     { -rest_otype_pretty "Ticket-Ticket Relationship" }
 } {
     Create a new object and return the object_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_projects"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
 
     # Store values into local variables
     set rel_type $rest_otype
@@ -1790,7 +1764,7 @@ ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
 			:object_id_one,
 			:object_id_two,
 			null,			-- context_id
-			:user_id,
+			:rest_user_id,
 			'[ns_conn peeraddr]'
 		)
 	"]
@@ -1798,7 +1772,7 @@ ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
    
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
@@ -1812,15 +1786,22 @@ ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
 
 ad_proc -private im_rest_post_object_type_im_key_account_rel {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_key_account_rel" }
     { -rest_otype_pretty "Key Account Relationship" }
 } {
     Create a new object and return the object_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_projects"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
+
+    
     # Store values into local variables
     set rel_type $rest_otype
     set creation_ip [ad_conn peeraddr]
@@ -1867,7 +1848,7 @@ ad_proc -private im_rest_post_object_type_im_key_account_rel {
 			:object_id_one,
 			:object_id_two,
 			null,			-- context_id
-			:user_id,
+			:rest_user_id,
 			'[ns_conn peeraddr]'
 		)
 	"]
@@ -1875,7 +1856,7 @@ ad_proc -private im_rest_post_object_type_im_key_account_rel {
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
    
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
@@ -1889,14 +1870,21 @@ ad_proc -private im_rest_post_object_type_im_key_account_rel {
 
 ad_proc -private im_rest_post_object_type_im_company_employee_rel {
     { -format "json" }
-    { -user_id 0 }
+    { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_company_employee_rel" }
     { -rest_otype_pretty "Company Employee Relationship" }
 } {
     Create a new object and return the object_id.
 } {
-    ns_log Notice "im_rest_post_object_type_$rest_otype: user_id=$user_id"
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permissions $rest_user_id "add_projects"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
+
 
     # Store values into local variables
     set rel_type $rest_otype
@@ -1943,7 +1931,7 @@ ad_proc -private im_rest_post_object_type_im_company_employee_rel {
 			:object_id_one,
 			:object_id_two,
 			null,			-- context_id
-			:user_id,
+			:rest_user_id,
 			'[ns_conn peeraddr]'
 		)
 	"]
@@ -1951,7 +1939,7 @@ ad_proc -private im_rest_post_object_type_im_company_employee_rel {
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
-    im_audit -user_id $user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
    
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
