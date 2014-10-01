@@ -244,7 +244,7 @@ switch $format {
 		regsub -all {[^a-zA-Z0-9]} [string tolower $group_name] "_" group_name_key
 		lappend list_columns p$group_id
 		lappend list_columns [list \
-					  label [im_gif $profile_gif $group_name $group_name] \
+					  label [im_gif -translate_p 0 $profile_gif $group_name $group_name] \
 					  display_template "@object_types.p$group_id;noquote@" \
 					 ]
 		
