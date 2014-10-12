@@ -23,7 +23,8 @@ ad_proc -private im_rest_get_object_type {
     mapped to queries on the specified object type
 } {
     ns_log Notice "im_rest_get_object_type: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
-
+    set org_format $format
+    set org_rest_oid $rest_oid
     array set query_hash $query_hash_pairs
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = '$rest_otype'" -default 0]]
     set rest_columns [im_rest_get_rest_columns $query_hash_pairs]
@@ -62,7 +63,7 @@ ad_proc -private im_rest_get_object_type {
     set table_name [lindex [lindex $otype_info 0] 0]
     set id_column [lindex [lindex $otype_info 0] 1]
     if {"" == $table_name} {
-	im_rest_error -format $format -http_status 500 -message "Invalid DynField configuration: Object type '$rest_otype' doesn't have a table_name specified in table acs_object_types."
+	im_rest_error -format $org_format -http_status 500 -message "Invalid DynField configuration: Object type '$rest_otype' doesn't have a table_name specified in table acs_object_types."
     }
     # Deal with ugly situation that usre_id is defined multiple times for object_type=user
     if {"users" == $table_name} { set id_column "person_id" }
@@ -168,7 +169,7 @@ ad_proc -private im_rest_get_object_type {
     foreach where_clause $where_clause_list {
 	set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
 	if {!$valid_sql_where} {
-	    im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
+	    im_rest_error -format $org_format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
 	    return
 	}
     }
@@ -187,7 +188,7 @@ ad_proc -private im_rest_get_object_type {
     append sql "
 	where	o.object_type = :rest_otype and
 		o.object_id in (
-			select  t.$id_column as rest_oid
+			select  t.$id_column
 			from    $table_name t
 		)
 		$where_clause
@@ -220,25 +221,27 @@ ad_proc -private im_rest_get_object_type {
 
 	# Check permissions
 	set read_p $rest_otype_read_all_p
-	
-	if {!$read_p} {
 
-	    
+	if {!$read_p} {
 	    # This is one of the "custom" object types - check the permission:
 	    # This may be quite slow checking 100.000 objects one-by-one...
-	    catch {
+	    if {[catch {
 		ns_log Notice "im_rest_get_object_type: Checking for individual permissions: ${rest_otype}_permissions $rest_user_id $rest_oid"
 		eval "${rest_otype}_permissions $rest_user_id $rest_oid view_p read_p write_p admin_p"
 
-		if {!$read_p && "" != $rest_oid} {
-		    im_rest_error -format $format -http_status 403 -message "User does not have read access to this object"
+		# Write out error message only if the user has specified a single object to check. Otherwise just skip.
+		if {!$read_p && "" != $org_rest_oid} {
+		    im_rest_error -format $org_format -http_status 403 -message "User #$rest_user_id does not have read access to object #$org_rest_oid"
 		    return
 		}
+	    } err_msg]} {
+		im_rest_error -format $org_format -http_status 500 -message "Internal error: $err_msg"
+		return
 	    }
 	}
 	if {!$read_p} { continue }
 
-	switch $format {
+	switch $org_format {
 	    json {
 		set komma ",\n"
 		if {0 == $obj_ctr} { set komma "" }
@@ -265,7 +268,7 @@ ad_proc -private im_rest_get_object_type {
 	incr obj_ctr
     }
 
-    switch $format {
+    switch $org_format {
 	html {
 	    set page_title "object_type: $rest_otype"
 	    im_rest_doc_return 200 "text/html" "
@@ -274,15 +277,13 @@ ad_proc -private im_rest_get_object_type {
 		</table>[im_footer]
 	    " 
 	}
-	json {  
-	    # Calculate the total number of objects
-	    set total [db_string total "select count(*) from ($unlimited_sql) t" -default 0]
-	    set result "{\"success\": true,\n\"total\": $total,\n\"message\": \"im_rest_get_object_type: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
+	json {
+	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_object_type: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
 	    im_rest_doc_return 200 "text/html" $result
 	    return
 	}
 	default {
-	     ad_return_complaint 1 "Invalid format5: '$format'"
+	     ad_return_complaint 1 "im_rest_get_object_type: Invalid format5: '$org_format'"
 	     return
 	}
     }
@@ -300,14 +301,13 @@ ad_proc -private im_rest_get_im_invoice_items {
     Handler for GET rest calls on invoice items.
 } {
     ns_log Notice "im_rest_get_invoice_items: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
-
+    
     array set query_hash $query_hash_pairs
     if {"" != $rest_oid} { set query_hash(item_id) $rest_oid }
     
     set base_url "[im_rest_system_url]/intranet-rest"
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_invoice'" -default 0]]
-    set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
-
+    set rest_otype_read_all_p [im_permission $rest_user_id "view_finance"]
 
     # -------------------------------------------------------
     # Check if there is a where clause specified in the URL and validate the clause.
@@ -327,7 +327,7 @@ ad_proc -private im_rest_get_im_invoice_items {
     set sql "
 	select	ii.item_id as rest_oid,
 		ii.item_name as object_name,
-		ii.invoice_id
+		ii.*
 	from	im_invoice_items ii
 	where	1=1
 		$where_clause
@@ -337,13 +337,12 @@ ad_proc -private im_rest_get_im_invoice_items {
     set unlimited_sql $sql
     append sql [im_rest_object_type_pagination_sql -query_hash_pairs $query_hash_pairs]
 
-
     set result ""
+    set obj_ctr 0
     db_foreach objects $sql {
 
 	# Check permissions
 	set read_p $rest_otype_read_all_p
-	if {!$read_p} { set read_p [im_permission $rest_user_id "view_finance"] }
 	if {!$read_p} { im_invoice_permissions $rest_user_id $invoice_id view_p read_p write_p admin_p }
 	if {!$read_p} { continue }
 
@@ -355,13 +354,23 @@ ad_proc -private im_rest_get_im_invoice_items {
 			<td><a href=\"$url?format=html\">$object_name</a>
 		</tr>\n" 
 	    }
-	    json { 
-		append result "{object_id: $rest_oid}\n" 
+	    json {
+		set komma ",\n"
+		if {0 == $obj_ctr} { set komma "" }
+		set dereferenced_result ""
+		foreach v $valid_vars {
+			eval "set a $$v"
+			regsub -all {\n} $a {\n} a
+			regsub -all {\r} $a {} a
+			append dereferenced_result ", \"$v\": \"[im_quotejson $a]\""
+		}
+		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[im_quotejson $object_name]\"$dereferenced_result}" 
 	    }
 	    default {}
 	}
+	incr obj_ctr
     }
-	
+
     switch $format {
 	html { 
 	    set page_title "object_type: $rest_otype"
@@ -372,8 +381,9 @@ ad_proc -private im_rest_get_im_invoice_items {
 	    " 
 	    return
 	}
-	json {  
-	    im_rest_doc_return 200 "text/html" "{object_type: \"$rest_otype\",\n$result\n}"
+	json {
+	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_im_invoice_items: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
+	    im_rest_doc_return 200 "text/html" $result
 	    return
 	}
     }
@@ -437,8 +447,6 @@ ad_proc -private im_rest_get_im_hours {
     }
     if {"" != $where_clause} { set where_clause "and $where_clause" }
 
-
-
     # Select SQL: Pull out hours.
     set sql "
 	select	h.hour_id as rest_oid,
@@ -482,9 +490,9 @@ ad_proc -private im_rest_get_im_hours {
 			eval "set a $$v"
 			regsub -all {\n} $a {\n} a
 			regsub -all {\r} $a {} a
-			append dereferenced_result ", \"$v\": \"[ns_quotehtml $a]\""
+			append dereferenced_result ", \"$v\": \"[im_quotejson $a]\""
 		}
-		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[ns_quotehtml $object_name]\"$dereferenced_result}" 
+		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[im_quotejson $object_name]\"$dereferenced_result}" 
 	    }
 	    default {}
 	}
@@ -502,8 +510,7 @@ ad_proc -private im_rest_get_im_hours {
 	    return
 	}
 	json {  
-	    # Deal with different JSON variants for different AJAX frameworks
-	    set result "{\"success\": true,\n\"message\": \"im_rest_get_im_hours: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
+	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_im_hours: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
 	    im_rest_doc_return 200 "text/html" $result
 	    return
 	}
@@ -606,9 +613,9 @@ ad_proc -private im_rest_get_im_hour_intervals {
 			eval "set a $$v"
 			regsub -all {\n} $a {\n} a
 			regsub -all {\r} $a {} a
-			append dereferenced_result ", \"$v\": \"[ns_quotehtml $a]\""
+			append dereferenced_result ", \"$v\": \"[im_quotejson $a]\""
 		}
-		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[ns_quotehtml $object_name]\"$dereferenced_result}" 
+		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[im_quotejson $object_name]\"$dereferenced_result}" 
 	    }
 	    default {}
 	}
@@ -640,20 +647,24 @@ ad_proc -private im_rest_get_im_categories {
     { -format "json" }
     { -rest_user_id 0 }
     { -rest_otype "" }
+    { -rest_oid "" }
     { -query_hash_pairs {} }
     { -debug 0 }
 } {
     Handler for GET rest calls on invoice items.
 } {
-    ns_log Notice "im_rest_get_categories: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_get_im_categories: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
     array set query_hash $query_hash_pairs
     set base_url "[im_rest_system_url]/intranet-rest"
 
+    if {"" != $rest_oid} { set query_hash(category_id) $rest_oid }
+    
+    
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_category'" -default 0]]
     set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
 
     # Get locate for translation
-    set locale [lang::user::locale -rest_user_id $rest_user_id]
+    set locale [lang::user::locale -user_id $rest_user_id]
 
     # -------------------------------------------------------
     # Valid variables to return for im_category
@@ -713,7 +724,6 @@ ad_proc -private im_rest_get_im_categories {
 
 	# Check permissions
 	set read_p $rest_otype_read_all_p
-	set read_p 1
 	if {!$read_p} { continue }
 
 	set url "$base_url/$rest_otype/$rest_oid"
@@ -732,9 +742,9 @@ ad_proc -private im_rest_get_im_categories {
 			eval "set a $$v"
 			regsub -all {\n} $a {\n} a
 			regsub -all {\r} $a {} a
-			append dereferenced_result ", \"$v\": \"[ns_quotehtml $a]\""
+			append dereferenced_result ", \"$v\": \"[im_quotejson $a]\""
 		}
-		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[ns_quotehtml $object_name]\"$dereferenced_result}" 
+		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[im_quotejson $object_name]\"$dereferenced_result}" 
 	    }
 	    default {}
 	}
@@ -751,9 +761,8 @@ ad_proc -private im_rest_get_im_categories {
 	    " 
 	    return
 	}
-	json {  
-	    # Deal with different JSON variants for different AJAX frameworks
-	    set result "{\"success\": true,\n\"message\": \"im_rest_get_im_categories: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
+	json {
+	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_im_categories: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
 	    im_rest_doc_return 200 "text/html" $result
 	    return
 	}
@@ -766,6 +775,7 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
     { -format "json" }
     { -rest_user_id 0 }
     { -rest_otype "" }
+    { -rest_oid "" }
     { -query_hash_pairs {} }
     { -debug 0 }
 } {
@@ -774,10 +784,11 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
     ns_log Notice "im_rest_get_im_dynfield_attributes: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
     array set query_hash $query_hash_pairs
     set base_url "[im_rest_system_url]/intranet-rest"
-
+    if {"" != $rest_oid} { set query_hash(attribute_id) $rest_oid }
+    
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_dynfield_attribute'" -default 0]]
     set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
-
+    
     # -------------------------------------------------------
     # Check if there is a where clause specified in the URL and validate the clause.
     set where_clause ""
@@ -814,6 +825,7 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
 
 
     set result ""
+    set obj_ctr 0
     db_foreach objects $sql {
 
 	# Check permissions
@@ -828,9 +840,10 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
 			<td><a href=\"$url?format=html\">$rest_object_name</a>
 		</tr>\n" 
 	    }
-	    json { append result "{object_id: $rest_oid, object_name: \"[ns_quotehtml $rest_object_name\"}\n" }
+	    json { append result "{object_id: $rest_oid, object_name: \"[im_quotejson $rest_object_name]\"}\n" }
 	    default {}
 	}
+	incr obj_ctr
     }
 	
     switch $format {
@@ -842,8 +855,10 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
 		</table>[im_footer]
 	    " 
 	}
-	json {  
-	    im_rest_doc_return 200 "text/html" "\[\n$result\n\]\n"
+	json {
+	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_im_dynfield_attributes: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
+	    im_rest_doc_return 200 "text/html" $result
+	    return
 	}
     }
 

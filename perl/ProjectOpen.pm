@@ -126,7 +126,7 @@ sub _http_request {
     };
 
     if ($@) {
-	my $json_error = "{\"success\": false, \"message\": \"Error parsing JSON\"}";
+	my $json_error = "{\"success\": false, \"message\": \"Error parsing JSON: $@\"}";
 	$json = decode_json($json_error);
     }
     

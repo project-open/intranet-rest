@@ -65,14 +65,11 @@ if ($@) {
     exit 1;
 }
 
-
-
-
 my $success = $json->{'success'};
 my $total = $json->{'total'};
 my $message = $json->{'message'};
 
-my $successfull_p = ($return_code eq "200") && ($success eq "true") && ($total > 100);
+my $successfull_p = ($return_code eq "200") && ($success eq "true") && ($total > 50);
 if (!$successfull_p || $debug > 0) {
     print "test-list.perl:	list all object types	$successfull_p	$url	return_code=$return_code, success=$success, total=$total, message=$message\n";
 }
@@ -98,10 +95,17 @@ foreach my $ot (@object_types) {
     next if ($object_type =~ /::/);
 #    next if ($object_type =~ /acs_message_revision/);        # throws hard error in client
 
+#    next if ($object_type ne "im_category");
+    
     $url = "http://$rest_server/intranet-rest/$object_type?format=json";
     print STDERR "test-list.perl: getting objects of type $object_type from $url\n" if ($debug > 0);
 
     my $object_json = ProjectOpen->get_object_list($object_type);
+    if (ref($object_json) ne "HASH") {
+	print "test-list.perl:	list $object_type	0	$url	Internal error in get_object_list\n";
+	next;
+    }
+    
     my $success = $object_json->{'success'};
     my $message = $object_json->{'message'};
     $message =~ tr/\n\t/  /;
@@ -112,6 +116,11 @@ foreach my $ot (@object_types) {
     }
     
     my $total = $object_json->{'total'};
+    if (!defined $total) {
+	print "test-list.perl:	list $object_type	0	$url	Result does not contain 'total' property\n";
+	next;
+    }
+
     my @object_list = @{$object_json->{'data'}};
 
     $successfull_p = ($success eq "true");

@@ -287,7 +287,7 @@ ad_proc -private im_rest_call_get {
 	append err_msg "\nStack Trace:\n"
 	append err_msg $::errorInfo
 	ns_log Notice "im_rest_call_get: im_rest_call returned an error: $err_msg"
-	return [im_rest_error -format $format -http_status 500 -message "Internal error: [ns_quotehtml $err_msg]"]
+	return [im_rest_error -format $format -http_status 500 -message "Internal error: $err_msg"]
     }
 }
 

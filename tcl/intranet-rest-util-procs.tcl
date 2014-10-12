@@ -402,7 +402,7 @@ ad_proc -public im_rest_object_type_columns {
 	from
 		user_tab_columns utc
 	where
-		-- check the main tables for all object types
+		(-- check the main tables for all object types
 		lower(utc.table_name) in (
 			select	lower(table_name)
 			from	acs_object_types
@@ -413,7 +413,9 @@ ad_proc -public im_rest_object_type_columns {
 			select	lower(table_name)
 			from	acs_object_type_tables
 			where	object_type in ('[join $super_types "', '"]')
-		)
+		)) and
+		-- avoid returning 'format' because format=json is part of every query
+		lower(utc.column_name) not in ('format')
     "
 
     set columns [list]
@@ -586,9 +588,10 @@ ad_proc -public im_rest_error {
     switch $format {
 	html { 
 	    doc_return 200 "text/html" "
-		[im_header $page_title [im_rest_header_extra_stuff]][im_navbar]<table>
-		<tr class=rowtitle><td class=rowtitle><td>$status_message</td></tr>
-		</table>[im_footer]
+		[im_header $page_title [im_rest_header_extra_stuff]][im_navbar]
+		<p>$status_message</p>
+		<pre>[ns_quotehtml $message]</pre>
+		[im_footer]
 	    " 
 	}
 	json {  
@@ -687,7 +690,6 @@ ad_proc -public im_quotejson { str } {
     @author Frank Bergmann
 } {
     regsub -all {\\} $str {\\\\} str
-    regsub -all {'} $str {\'} str
     regsub -all {"} $str {\"} str
     regsub -all {\n} $str {\\n} str
     regsub -all {\t} $str {\\t} str
