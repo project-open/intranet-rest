@@ -93,9 +93,9 @@ foreach my $ot (@object_types) {
     my $object_type = $ot->{'object_type'};
     my $pretty_name = $ot->{'pretty_name'};
     next if ($object_type =~ /::/);
-#    next if ($object_type =~ /acs_message_revision/);        # throws hard error in client
 
-#    next if ($object_type ne "im_category");
+#    next if ($object_type =~ /acs_message_revision/);        # throws hard error in client
+#    next if ($object_type ne "im_trans_task");
     
     $url = "http://$rest_server/intranet-rest/$object_type?format=json";
     print STDERR "test-list.perl: getting objects of type $object_type from $url\n" if ($debug > 0);

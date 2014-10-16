@@ -22,6 +22,8 @@ use Try::Tiny;
 
 use Class::Data::Inheritable;
 
+use HTTP::Request::Common qw{ POST };
+
 require Class::Data::Inheritable;
 require Class::Accessor;
 use base qw/Class::Data::Inheritable Class::Accessor/;
@@ -95,24 +97,75 @@ sub new {
 # Low-level HTTP request to retrieve an XML page from ]project-open[.
 # Higher-level procedures will use this procecure to retreive specific
 # objects.
-# Example: _http_request("/intranet-rest/im_conf_item");
+# Example: _http_get_request("/intranet-rest/im_conf_item");
 # Parameters:
 #	self:	reference to ProjectOpen class
 #	path:	the path to the resource ('/intranet-rest/')
 #
-sub _http_request {
+sub _http_get_request {
     my $self = shift;
     my $uri = shift;
 
     # Show some debug messages
     my $debug = ProjectOpen->debug;
-    print STDERR sprintf "ProjectOpen: request: uri=%s using email=%s, pwd=%s\n", 
+    print STDERR sprintf "ProjectOpen: get_request: uri=%s using email=%s, pwd=%s\n", 
         $uri, ProjectOpen->email, ProjectOpen->password if ($debug > 3);
 
     # Perform the HTTP request. The request is authenticated using Basic Auth.
     my $ua = LWP::UserAgent->new;
     my $req = HTTP::Request->new(GET => $uri);
     $req->authorization_basic(ProjectOpen->email, ProjectOpen->password);
+    my $res = $ua->request($req);
+    carp sprintf "ProjectOpen: request: HTTP request failed: %s", 
+        $res->status_line unless $res->is_success;
+
+    print STDERR sprintf "ProjectOpen: content=%s", $res->content if ($debug > 5);
+
+    # Parse the returned data and return the result
+    my $json;
+    eval {
+	$json = decode_json($res->content);
+    };
+
+    if ($@) {
+	my $json_error = "{\"success\": false, \"message\": \"Error parsing JSON: $@\"}";
+	$json = decode_json($json_error);
+    }
+    
+    return $json;
+}
+
+
+
+
+# Low-level HTTP request to write data to ]project-open[.
+# Higher-level procedures will use this procecure to retreive specific
+# objects.
+# Example: _http_post_request("/intranet-rest/im_conf_item", $hash);
+# Parameters:
+#	self:	reference to ProjectOpen class
+#	path:	the path to the resource ('/intranet-rest/')
+#	hash:	a hash with variable->value pairs to write into the object
+#
+sub _http_post_request {
+    my $self = shift;
+    my $uri = shift;
+    my $hash = shift;
+
+    # Show some debug messages
+    my $debug = ProjectOpen->debug;
+    print STDERR sprintf "ProjectOpen: _http_post_request: uri=%s using email=%s, pwd=%s\n", 
+        $uri, ProjectOpen->email, ProjectOpen->password if ($debug > 3);
+    print STDERR sprintf "ProjectOpen: _http_post_request: " . Dumper($hash) . "\n" if ($debug > 5);
+
+    my $hash_as_json = encode_json($hash);
+    print STDERR sprintf "ProjectOpen:  _http_post_request: encoded hash as JSON: " . $hash_as_json . "\n" if ($debug > 5);
+    
+    # Perform the HTTP request. The request is authenticated using Basic Auth.
+    my $ua = LWP::UserAgent->new;
+    my $req = HTTP::Request->new(POST => $uri);
+    $req->authorization_basic(ProjectOpen->email, ProjectOpen->password);
+    $req->content($hash_as_json);
     my $res = $ua->request($req);
     carp sprintf "ProjectOpen: request: HTTP request failed: %s", 
         $res->status_line unless $res->is_success;
@@ -155,13 +208,13 @@ sub get_object_list {
     } else {
 	$uri->query_form("format" => "json"); 
     }
-    my $res = ProjectOpen->_http_request($uri);
+    my $res = ProjectOpen->_http_get_request($uri);
     return $res;
 }
 
 
 # Retreive a single object.
-# Example: get_object(624); # should return info about user "System Administrator"
+# Example: get_object("user", 624); # should return info about user "System Administrator"
 # Parameters:
 #	object_type:	]po[ object type ('im_project', 'im_conf_item', ...)
 #	object_id:	The ID of the object. Every object in ]po[ has a
@@ -184,7 +237,7 @@ sub get_object {
 	my $host = ProjectOpen->host;
 	my $uri = URI->new("http://$host/intranet-rest/$object_type/$object_id?format=json");
 	$uri->query_form("format" => "json"); 
-	$o_json = ProjectOpen->_http_request($uri);
+	$o_json = ProjectOpen->_http_get_request($uri);
 
 	# Store in cache
 	$o_cache->{$object_id} = $o_json;
@@ -212,7 +265,7 @@ sub get_category {
     } else {
 	# Get the category from the REST server
 	my $uri = URI->new("/intranet-rest/im_category/$category_id?format=json");
-	$cat_hash = ProjectOpen->_http_request($uri);
+	$cat_hash = ProjectOpen->_http_get_request($uri);
 
 	# Store in cache
 	$cat_cache->{$category_id} = $cat_hash;
@@ -242,12 +295,39 @@ sub get_group_memberships {
 		     "object_id" => $object_id,
 		     "format" => "json"
     );
-    my $membership_json = ProjectOpen->_http_request($uri);
+    my $membership_json = ProjectOpen->_http_get_request($uri);
     my $list = $membership_json->{data};
     
     return $list;
 }
 
+
+# Update a single object.
+# Example: post_object("user", 8898);
+# This should update the data of the user "Bobby Bizconsult" if the
+# authenticated user has write permissions (i.e. SysAdmin).
+#
+# Parameters:
+#	object_type:	]po[ object type ('im_project', 'im_conf_item', ...)
+#	object_id:	The ID of the object. Every object in ]po[ has a unique ID.
+#	json:		Hash with variables to update
+#
+sub post_object {
+    my $self = shift;
+    my $object_type = shift;
+    my $object_id = shift;
+    my $json = shift;
+    my $debug = ProjectOpen->debug;
+    
+    print STDERR sprintf "ProjectOpen: post_object: object_type=%s, object_id=%s, json=%s\n", $object_type, $object_id, Dumper($json) if ($debug > 0);
+
+    # Get the object from the REST server
+    my $host = ProjectOpen->host;
+    my $uri = URI->new("http://$host/intranet-rest/$object_type/$object_id");
+    my $o_json = ProjectOpen->_http_post_request($uri, $json);
+
+    return $o_json;
+}
 
 1;
 
