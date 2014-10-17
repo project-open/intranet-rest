@@ -45,7 +45,7 @@ ad_proc -private im_rest_post_object_type_im_project {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_projects_p [im_permissions $rest_user_id "add_projects"]
+    set add_projects_p [im_permission $rest_user_id "add_projects"]
     if {!$add_projects_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
     }
@@ -143,7 +143,7 @@ ad_proc -private im_rest_post_object_type_im_ticket {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_tickets_p [im_permissions $rest_user_id "add_tickets"]
+    set add_tickets_p [im_permission $rest_user_id "add_tickets"]
     if {!$add_tickets_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create tickets"] 
     }
@@ -276,7 +276,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_timesheet_tasks"]
+    set add_p [im_permission $rest_user_id "add_timesheet_tasks"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
     }
@@ -491,7 +491,7 @@ ad_proc -private im_rest_post_object_type_im_company {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_companies"]
+    set add_p [im_permission $rest_user_id "add_companies"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create companies"] 
     }
@@ -650,9 +650,9 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_absences"]
-    set add_all_p [im_permissions $rest_user_id "add_absences_all"]
-    set add_direct_reports_p [im_permissions $rest_user_id "add_absences_direct_reports"]
+    set add_p [im_permission $rest_user_id "add_absences"]
+    set add_all_p [im_permission $rest_user_id "add_absences_all"]
+    set add_direct_reports_p [im_permission $rest_user_id "add_absences_direct_reports"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create absences"] 
     }
@@ -773,7 +773,7 @@ ad_proc -private im_rest_post_object_type_user {
     ns_log Notice "im_rest_post_object_type_$rest_otype: Started"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_users"]
+    set add_p [im_permission $rest_user_id "add_users"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create users"] 
     }
@@ -967,7 +967,7 @@ ad_proc -private im_rest_post_object_type_im_invoice {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_invoices"]
+    set add_p [im_permission $rest_user_id "add_invoices"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create invoices"] 
     }
@@ -1075,7 +1075,7 @@ ad_proc -private im_rest_post_object_type_im_trans_invoice {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_invoices"]
+    set add_p [im_permission $rest_user_id "add_invoices"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create translation invoices"] 
     }
@@ -1122,7 +1122,7 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_invoices"]
+    set add_p [im_permission $rest_user_id "add_invoices"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create invoice items"] 
     }
@@ -1228,8 +1228,8 @@ ad_proc -private im_rest_post_object_type_im_hour {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_hours"]
-    set add_all_p [im_permissions $rest_user_id "add_hours_all"]
+    set add_p [im_permission $rest_user_id "add_hours"]
+    set add_all_p [im_permission $rest_user_id "add_hours_all"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create hours"] 
     }
@@ -1332,7 +1332,7 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_projects"]
+    set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
     }
@@ -1447,7 +1447,7 @@ ad_proc -private im_rest_post_object_type_im_note {
     ns_log Notice "im_rest_post_object_im_note: rest_oid=$rest_oid"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_projects"]
+    set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
     }
@@ -1531,7 +1531,7 @@ ad_proc -private im_rest_post_object_type_membership_rel {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_projects"]
+    set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
     }
@@ -1616,7 +1616,7 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_projects"]
+    set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
     }
@@ -1713,7 +1713,7 @@ ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_projects"]
+    set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
     }
@@ -1796,7 +1796,7 @@ ad_proc -private im_rest_post_object_type_im_key_account_rel {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_projects"]
+    set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
     }
@@ -1880,7 +1880,7 @@ ad_proc -private im_rest_post_object_type_im_company_employee_rel {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permissions $rest_user_id "add_projects"]
+    set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
     }
