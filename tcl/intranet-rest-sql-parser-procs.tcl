@@ -600,6 +600,11 @@ ad_proc -public sql_value_litteral {str} {
 
     set first_char [string range $str 0 0]
     if {[string is integer $first_char]} { set first_char "integer" }
+    if {"-" == $first_char} {
+	# Deal with negative integers - ugly/inconsistent?
+	set str [string range $str 1 end]
+	set first_char "integer"
+    }
     if {[string is alpha $first_char]} { set first_char "alpha" }
     switch $first_char {
 	"'" {
