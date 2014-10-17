@@ -17,11 +17,11 @@ ad_library {
 ad_proc -private im_rest_version {} {
     Returns the current server version of the REST interface.
     Please see www.project-open.org/en/rest_version_history
-    <li>3.0	(2014-09-11):	Removed XML format, test based dev, rewrite of read/list
+    <li>3.0	(2014-09-11):	Removed XML support, changed single object GET,
+    				test based dev, rewrite of read/list
     <li>2.2	(2013-10-18):	Added "deref_p=1" parameter for dereferencing
     <li>2.1	(2012-03-18):	Added new report and now deprecating single object calls
     <li>2.0	(2011-05-12):	Added support for JSOn and Sencha format variants
-				ToDo: Always return "id" instead of "object_id"
     <li>1.5.2	(2010-12-21):	Fixed bug of not applying where_query
     <li>1.5.1	(2010-12-01):	Fixed bug with generic objects, improved rendering of some fields
     <li>1.5	(2010-11-03):	Added rest_object_permissions and rest_group_memberships reports
