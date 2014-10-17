@@ -314,7 +314,7 @@ ad_proc -private im_rest_page {
 
     set result [ad_parse_template -params $params "/packages/intranet-rest/www/$rest_otype"]
     switch $format {
-	json { set mime_type "text/plain" }
+	json { set mime_type "application/json" }
 	default { set mime_type "text/html" }
     }
     doc_return 200 $mime_type $result

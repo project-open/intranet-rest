@@ -288,7 +288,7 @@ ad_proc -private im_rest_get_object_type {
 	}
 	json {
 	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_object_type: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
-	    im_rest_doc_return 200 "text/html" $result
+	    im_rest_doc_return 200 "application/json" $result
 	    return
 	}
 	default {
@@ -387,12 +387,11 @@ ad_proc -private im_rest_get_im_invoice_items {
 		[im_header $page_title [im_rest_header_extra_stuff]][im_navbar]<table>
 		<tr class=rowtitle><td class=rowtitle>object_id</td><td class=rowtitle>Link</td></tr>$result
 		</table>[im_footer]
-	    " 
-	    return
+	    "
 	}
 	json {
 	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_im_invoice_items: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
-	    im_rest_doc_return 200 "text/html" $result
+	    im_rest_doc_return 200 "application/json" $result
 	    return
 	}
     }
@@ -515,12 +514,11 @@ ad_proc -private im_rest_get_im_hours {
 		[im_header $page_title [im_rest_header_extra_stuff]][im_navbar]<table>
 		<tr class=rowtitle><td class=rowtitle>object_id</td><td class=rowtitle>Link</td></tr>$result
 		</table>[im_footer]
-	    " 
-	    return
+	    "
 	}
 	json {  
 	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_im_hours: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
-	    im_rest_doc_return 200 "text/html" $result
+	    im_rest_doc_return 200 "application/json" $result
 	    return
 	}
     }
@@ -638,13 +636,11 @@ ad_proc -private im_rest_get_im_hour_intervals {
 		[im_header $page_title [im_rest_header_extra_stuff]][im_navbar]<table>
 		<tr class=rowtitle><td class=rowtitle>object_id</td><td class=rowtitle>Link</td></tr>$result
 		</table>[im_footer]
-	    " 
-	    return
+	    "
 	}
 	json {  
-	    # Deal with different JSON variants for different AJAX frameworks
 	    set result "{\"success\": true,\n\"message\": \"im_rest_get_im_hour_intervals: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
-	    im_rest_doc_return 200 "text/html" $result
+	    im_rest_doc_return 200 "application/json" $result
 	    return
 	}
     }
@@ -768,11 +764,10 @@ ad_proc -private im_rest_get_im_categories {
 		<tr class=rowtitle><td class=rowtitle>object_id</td><td class=rowtitle>Link</td></tr>$result
 		</table>[im_footer]
 	    " 
-	    return
 	}
 	json {
 	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_im_categories: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
-	    im_rest_doc_return 200 "text/html" $result
+	    im_rest_doc_return 200 "application/json" $result
 	    return
 	}
     }
@@ -886,7 +881,7 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
 	}
 	json {
 	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_im_dynfield_attributes: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
-	    im_rest_doc_return 200 "text/html" $result
+	    im_rest_doc_return 200 "application/json" $result
 	    return
 	}
     }

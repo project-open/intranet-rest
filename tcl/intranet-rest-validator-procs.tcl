@@ -34,7 +34,6 @@ ad_proc -private im_rest_validate_call {
     set rqset [ns_set new rqset]
     ns_set put $rqset "Accept" "*/*"
     ns_set put $rqset "User-Agent" "[ns_info name]-Tcl/[ns_info version]"
-    # ns_set put $rqset "Content-type" "text/xml"
     ns_set put $rqset "Content-type" "application/x-www-form-urlencoded"
     ns_set put $rqset "Content-length" [string length $data]
     set timeout 15

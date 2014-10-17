@@ -37,7 +37,18 @@ db_0or1row user_info "
 "
 
 switch $format {
-    xml - rest {
+    json {
+	set result "{\"success\": true,
+\"message\": \"Authenticated\",
+\"user_id\": $user_id,
+\"user_name\": \"[im_quotejson $name]\",
+\"username\": \"[im_quotejson $username]\",
+\"token\": \"[im_quotejson $auto_token]\",
+}"
+	doc_return 200 "application/json" $result
+	ad_script_abort
+    }
+    xml {
 	doc_return 200 "text/xml" "<?xml version='1.0' encoding='UTF-8'?>
 	<auto_login>
 		<user_id>$user_id</user_id>
@@ -46,6 +57,7 @@ switch $format {
 		<token>$auto_login</token>
 	</auto_login>
         "
+	ad_script_abort
     }
     default {
 	# just continue with the HTML stuff below,

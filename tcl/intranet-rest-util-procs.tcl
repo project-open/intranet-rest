@@ -595,9 +595,8 @@ ad_proc -public im_rest_error {
 	    " 
 	}
 	json {  
-	    # Calculate the total number of objects
 	    set result "{\"success\": false,\n\"message\": \"[im_quotejson $message]\"\n}"
-	    doc_return 200 "text/html" $result
+	    doc_return 200 "application/json" $result
 	}
 	default {
 	     ad_return_complaint 1 "Invalid format1: '$format'"
