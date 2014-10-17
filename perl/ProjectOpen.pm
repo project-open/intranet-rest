@@ -13,7 +13,6 @@ package ProjectOpen;
 
 use strict;
 use warnings;
-use Carp qw/carp croak/;
 use HTTP::Request;
 use LWP::UserAgent;
 use Data::Dumper;
@@ -56,11 +55,11 @@ sub _get_args {
     
     my %args;
     if (scalar(@_) > 1) {
-	if (@_ % 2) {croak "odd number of parameters";}
+	if (@_ % 2) { print STDERR "ProjectOpen: new: odd number of parameters"; }
 	%args = @_;
     } elsif (ref $_[0]) {
 	unless (eval {local $SIG{'__DIE__'}; %{$_[0]} || 1}) {
-	    croak "not a hashref in args";
+	    print STDERR "ProjectOpen: new: not a hashref in args";
 	}
 	%args = %{$_[0]};
     } else {
@@ -116,10 +115,10 @@ sub _http_get_request {
     my $req = HTTP::Request->new(GET => $uri);
     $req->authorization_basic(ProjectOpen->email, ProjectOpen->password);
     my $res = $ua->request($req);
-    carp sprintf "ProjectOpen: request: HTTP request failed: %s", 
+    print STDERR sprintf "ProjectOpen: request: HTTP request failed: %s\n", 
         $res->status_line unless $res->is_success;
 
-    print STDERR sprintf "ProjectOpen: content=%s", $res->content if ($debug > 5);
+    print STDERR sprintf "ProjectOpen: content=%s\n", $res->content if ($debug > 5);
 
     # Parse the returned data and return the result
     my $json;
@@ -156,10 +155,10 @@ sub _http_post_request {
     my $debug = ProjectOpen->debug;
     print STDERR sprintf "ProjectOpen: _http_post_request: uri=%s using email=%s, pwd=%s\n", 
         $uri, ProjectOpen->email, ProjectOpen->password if ($debug > 3);
-    print STDERR sprintf "ProjectOpen: _http_post_request: " . Dumper($hash) . "\n" if ($debug > 5);
+    print STDERR "ProjectOpen: _http_post_request: " . Dumper($hash) . "\n" if ($debug > 5);
 
     my $hash_as_json = encode_json($hash);
-    print STDERR sprintf "ProjectOpen:  _http_post_request: encoded hash as JSON: " . $hash_as_json . "\n" if ($debug > 5);
+    print STDERR "ProjectOpen:  _http_post_request: encoded hash as JSON: " . $hash_as_json . "\n" if ($debug > 5);
     
     # Perform the HTTP request. The request is authenticated using Basic Auth.
     my $ua = LWP::UserAgent->new;
@@ -167,10 +166,10 @@ sub _http_post_request {
     $req->authorization_basic(ProjectOpen->email, ProjectOpen->password);
     $req->content($hash_as_json);
     my $res = $ua->request($req);
-    carp sprintf "ProjectOpen: request: HTTP request failed: %s", 
+    print STDERR sprintf "ProjectOpen: request: HTTP request failed: %s\n", 
         $res->status_line unless $res->is_success;
 
-    print STDERR sprintf "ProjectOpen: content=%s", $res->content if ($debug > 5);
+    print STDERR sprintf "ProjectOpen: content=%s\n", $res->content if ($debug > 5);
 
     # Parse the returned data and return the result
     my $json;
@@ -269,7 +268,6 @@ sub get_category {
 
 	# Store in cache
 	$cat_cache->{$category_id} = $cat_hash;
-	print STDERR Dumper($cat_cache) if ($debug > 5);
     }
 
     my $category = $cat_hash->{category};
@@ -319,7 +317,8 @@ sub post_object {
     my $json = shift;
     my $debug = ProjectOpen->debug;
     
-    print STDERR sprintf "ProjectOpen: post_object: object_type=%s, object_id=%s, json=%s\n", $object_type, $object_id, Dumper($json) if ($debug > 0);
+    print STDERR sprintf "ProjectOpen: post_object: object_type=%s, object_id=%s\n", $object_type, $object_id if ($debug > 0);
+    print STDERR sprintf "ProjectOpen: post_object: json=%s\n", $object_type, $object_id, Dumper($json) if ($debug > 8);
 
     # Get the object from the REST server
     my $host = ProjectOpen->host;

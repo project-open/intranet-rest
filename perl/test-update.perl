@@ -24,7 +24,7 @@ use ProjectOpen;
 # --------------------------------------------------------
 # Connection parameters: 
 #
-my $debug = 6;							# Debug: 0=silent, 9=verbose
+my $debug = 1;							# Debug: 0=silent, 9=verbose
 
 my $rest_server = "demo.project-open.net";			# May include port number, but no trailing "/"
 my $rest_email = "sysadmin\@tigerpond.com";			# Email for basic auth, needs to be Admin
@@ -78,7 +78,7 @@ my $req = HTTP::Request->new(GET => $url);
 $req->authorization_basic($rest_email, $rest_password);
 my $response = $ua->request($req);
 my $body =  $response->content;
-print "test-update.perl: HTTP body=$body\n" if ($debug > 8);
+print STDERR "test-update.perl: HTTP body=$body\n" if ($debug > 8);
 
 
 # -------------------------------------------------------
@@ -91,9 +91,7 @@ if (200 != $return_code) {
 }
 
 my $json;
-eval {
-    $json = decode_json($body);
-};
+eval { $json = decode_json($body); };
 if ($@) {
     print "test-update.perl:	update all object types	0	$url	Failed to parse JSON, json=$body\n";
     exit 1;
@@ -102,7 +100,6 @@ if ($@) {
 my $success = $json->{'success'};
 my $total = $json->{'total'};
 my $message = $json->{'message'};
-
 my $successfull_p = ($return_code eq "200") && ($success eq "true") && ($total > 50);
 if (!$successfull_p || $debug > 0) {
     print "test-update.perl:	list all object types	$successfull_p	$url	return_code=$return_code, success=$success, total=$total, message=$message\n";
@@ -116,7 +113,7 @@ ProjectOpen->new (
     host	=> $rest_server,
     email	=> $rest_email,
     password	=> $rest_password,
-    debug	=> $debug
+    debug	=> 0
 );
 
 
@@ -129,19 +126,24 @@ foreach my $ot (@object_types) {
     my $object_type = $ot->{'object_type'};
     my $pretty_name = $ot->{'pretty_name'};
     next if ($object_type =~ /::/);
-
 #    next if ($object_type =~ /acs_message_revision/);        # throws hard error in client
-    next if ($object_type ne "im_cost_center");
-    
-    $url = "http://$rest_server/intranet-rest/$object_type?format=json";
-    print STDERR "test-update.perl: getting objects of type $object_type from $url\n" if ($debug > 0);
+#    next if ($object_type ne "im_cost_center");
 
+#    next if (!($object_type =~ /^im_/));
+
+    
+    # ----------------------------------------
+    # Get the list of objects for the object type
+    # and check return codes
+    $url = "http://$rest_server/intranet-rest/$object_type?format=json";
+    print STDERR "test-update.perl: $object_type\n" if ($debug > 0);
+    print STDERR "test-update.perl: $object_type\n" if ($debug > 0);
+    print STDERR "test-update.perl: $object_type: Getting list of $object_type from $url\n" if ($debug > 0);
     my $object_json = ProjectOpen->get_object_list($object_type);
     if (ref($object_json) ne "HASH") {
 	print "test-update.perl:	update $object_type	0	$url	Internal error in get_object_update\n";
 	next;
     }
-    
     my $success = $object_json->{'success'};
     my $message = $object_json->{'message'};
     $message =~ tr/\n\t/  /;
@@ -150,26 +152,86 @@ foreach my $ot (@object_types) {
 	print "test-update.perl:	list $object_type	0	$url	$short_msg\n";
 	next;
     }
-    
-    my $total = $object_json->{'total'};
-    if (!defined $total) {
-	print "test-update.perl:	list $object_type	0	$url	Result does not contain 'total' property\n";
+    $total = $object_json->{'total'};
+    if (0 == $total) {
+	# No objects found of the specific type
+	print STDERR "test-update.perl: $object_type: Didn't find any objects of this type\n" if ($debug > 0);
+	next;
+    }
+   
+    my @object_list_json = @{$object_json->{'data'}};
+    print STDERR "test-update.perl: $object_type: List of objects of type $object_type: " . Dumper(@object_list_json) . "\n" if ($debug > 8);
+    my $first_object_json = $object_list_json[0];
+    print STDERR "test-update.perl: $object_type: JSON of first object of type $object_type: " . Dumper($first_object_json) . "\n" if ($debug > 8);
+    my $oid = $first_object_json->{'id'};					# Every REST results includes a generic 'id'
+    if (!defined $oid) {
+	print "test-update.perl:	list $object_type	0	$url	Didn't find 'id' property of first object\n";
 	next;
     }
 
-    my @object_list_json = @{$object_json->{'data'}};
-    print "test-update.perl: " . Dumper(@object_list_json) . "\n" if ($debug >= 9);
-    my $first_object_json = $object_list_json[0];
-    print "test-update.perl: first_object_json: " . Dumper($first_object_json) . "\n" if ($debug > 4);
+    # -------------------------------
+    # Test the single object GET request
+    #
+    print STDERR "test-update.perl: $object_type: Getting single object with OID=$oid\n" if ($debug > 0);
+    my $get_object_json = ProjectOpen->get_object($object_type, $oid);
+    my $object_data_json = $get_object_json->{'data'}[0];
+    print STDERR "test-update.perl: $object_type: get_object($object_type,$oid): " . Dumper($first_object_json) . "\n" if ($debug > 4);
+    $success = $get_object_json->{'success'};
+    $message = $get_object_json->{'message'};
+    $message =~ tr/\n\t/  /;
+    $short_msg = substr($message, 0, 40);
+    if ("true" ne $success) {
+	print "test-update.perl:	get $oid	0	url of get_object($object_type, $oid)	$short_msg\n";
+	next;
+    }
+    
+    # -------------------------------
+    # Update object using REST with exactly the same data.
+    # This tests that there is no error message during update.
+    #
+    print STDERR "test-update.perl: $object_type: Updating object OID=$oid with identical data:\n" if ($debug > 0);
+    my $update_result = ProjectOpen->post_object($object_type, $oid, $object_data_json);
+    print STDERR "test-update.perl: $object_type: post_object: result=" . Dumper($update_result) . "\n" if ($debug > 4);
+    # ToDo: Write out error message in case of failure
 
 
     # -------------------------------
-    # Get the data of a single object
-    my $oid = $first_object_json->{'id'};					# Every REST results includes generic 'id'
-    my $get_object_json = ProjectOpen->get_object($object_type, $oid);
-    my $get_data_json = $get_object_json->{'data'}[0];
-    print "test-update.perl: get_object($object_type,$oid): " . Dumper($first_object_json) . "\n" if ($debug > 4);
+    # Check if we know the name field of the object type
+    #
+    my $name_field = "";
+    if (exists $object_type_name_field_hash->{$object_type}) {
+	$name_field = $object_type_name_field_hash->{$object_type};
+	print STDERR "test-update.perl: $object_type: name_field=" . $name_field . " for object_type=" . $object_type . "\n" if ($debug > 4);
+    } else {
+	print STDERR "test-update.perl: $object_type: no name_field exists for object_type=" . $object_type . "\n" if ($debug > 4);
+	next;
+    }
 
+    
+    # -------------------------------
+    # We know the name field of the object type.
+    # Let's append a "%" at the end of the name and
+    # check that the object was updated correctly.
+    #
+    print STDERR "test-update.perl: $object_type: Appended a '%' to name_field=$name_field of object #$oid\n" if ($debug > 0);
+    my $object_name = $object_data_json->{$name_field};
+    if (!defined $object_name) {
+	print "test-update.perl:	get object_name for $object_type	0	unknown url	Didn't find '$name_field' property in object_data_json of #$oid\n";
+	next;
+    }
+    $object_data_json->{$name_field} = $object_name . "%";
+
+    $update_result = ProjectOpen->post_object($object_type, $oid, $object_data_json);
+    print STDERR "test-update.perl: $object_type: post_object: result=" . Dumper($update_result) . "\n" if ($debug > 6);
+    # ToDo: Write out error message in case of failure
+
+
+    # -------------------------------
+    # Get the updated data
+    #
+    print STDERR "test-update.perl: $object_type: Get the object #$oid ('$object_name') and check if the '%' was successfully written\n" if ($debug > 0);
+    $get_object_json = ProjectOpen->get_object($object_type, $oid);
+    $object_data_json = $get_object_json->{'data'}[0];
     $success = $get_object_json->{'success'};
     $message = $get_object_json->{'message'};
     $message =~ tr/\n\t/  /;
@@ -178,25 +240,22 @@ foreach my $ot (@object_types) {
 	print "test-update.perl:	get $oid	0	$url	$short_msg\n";
 	next;
     }
-
-    print "test-update.perl: array=" . Dumper($object_type_name_field_hash) . "\n";
     
-    if (exists $object_type_name_field_hash->{$object_type}) {
-	my $name_field = $object_type_name_field_hash->{$object_type};
-	print "test-update.perl: name_field=" . $name_field . " for object_type=" . $object_type . "\n" if ($debug > 4);
-    } else {
-	print "test-update.perl: no name_field exists for object_type=" . $object_type . "\n" if ($debug > 4);
-	next;
+    # Compare the new name of the object
+    my $new_object_name = $object_data_json->{$name_field};
+    if ($new_object_name ne $object_name . "%") {
+	print "test-update.perl:	get updated name of $oid	0	$url	update of object name failed: org=$object_name, new=$new_object_name\n";
     }
 
 
-    # !!!
-    # Add a "$" to the name field, so that the modified field is written to the server.
-
-    
     # -------------------------------
-    # Update object using REST with exactly the same data
-    ProjectOpen->post_object($object_type, $oid, $get_data_json);
+    # Restore the original data
+    #
+    print STDERR "test-update.perl: $object_type: Restore the original values of object #$oid\n" if ($debug > 0);
+    $object_data_json->{$name_field} = $object_name;
+    $update_result = ProjectOpen->post_object($object_type, $oid, $object_data_json);
+    print STDERR "test-update.perl: $object_type: post_object: result=" . Dumper($update_result) . "\n" if ($debug > 6);
+    # ToDo: Write out error message in case of failure
 
 }
 

@@ -156,12 +156,12 @@ ad_proc -private im_rest_get_object_type {
 	}
 	file_storage_object {
 	    # file storage object needs additional security
-	    lappend where_clause_unchecked_list "'t' = acs_permission__permission_p(o.object_id, $rest_user_id, 'read')"
+	    lappend where_clause_unchecked_list "'t' = acs_permission__permission_p(rest_oid, $rest_user_id, 'read')"
 	}
 	im_ticket {
 	    # Testing per-ticket permissions
 	    set read_sql [im_ticket_permission_read_sql -user_id $rest_user_id]
-	    lappend where_clause_unchecked_list "o.object_id in ($read_sql)"
+	    lappend where_clause_unchecked_list "rest_oid in ($read_sql)"
 	}
     }
 
@@ -190,10 +190,19 @@ ad_proc -private im_rest_get_object_type {
 		o.object_id in (
 			select  t.$id_column
 			from    $table_name t
-		)
-		$where_clause
+		)\
     "
 
+    # Add $where_clause to the outside of the SQL in order to
+    # avoid ambiguities of duplicate columns like "rel_id"
+    set sql "
+	select	*
+	from	($sql
+		) t
+	where	1=1
+		$where_clause
+    "
+    
     # Append sorting "ORDER BY" clause to the sql.
     append sql [im_rest_object_type_order_sql -query_hash_pairs $query_hash_pairs]
 
@@ -788,13 +797,19 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
     
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_dynfield_attribute'" -default 0]]
     set rest_otype_read_all_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
+
+    set deref_p 0
+    if {[info exists query_hash(deref_p)]} { set deref_p $query_hash(deref_p) }
+    im_security_alert_check_integer -location "im_rest_get_im_dynfield_attributes: deref_p" -value $deref_p
     
     # -------------------------------------------------------
     # Check if there is a where clause specified in the URL and validate the clause.
     set where_clause ""
     if {[info exists query_hash(query)]} { set where_clause $query_hash(query)}
     # Determine the list of valid columns for the object type
-    set valid_vars {attribute_name object_type}
+    set valid_vars [util_memoize [list im_rest_object_type_columns -deref_p $deref_p -rest_otype $rest_otype]]
+    set valid_vars [concat $valid_vars {object_type table_name attribute_name pretty_name pretty_plural datatype default_value min_n_values max_n_values storage static_p column_name}]
+   
     # Check that the query is a valid SQL where clause
     set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
     if {!$valid_sql_where} {
@@ -809,13 +824,16 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
 		aa.object_type||'.'||aa.attribute_name as rest_object_name,
 		da.attribute_id as rest_oid,
 		da.*,
-		aa.*
+		aa.*,
+		o.*
 	from	im_dynfield_attributes da,
-		acs_attributes aa
-	where	da.acs_attribute_id = aa.attribute_id
+		acs_attributes aa,
+		acs_objects o
+	where	da.acs_attribute_id = aa.attribute_id and
+		da.attribute_id = o.object_id
 		$where_clause
 	order by
-		aa.object_type, 
+		o.object_type, 
 		aa.attribute_name
     "
 
@@ -840,7 +858,18 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
 			<td><a href=\"$url?format=html\">$rest_object_name</a>
 		</tr>\n" 
 	    }
-	    json { append result "{object_id: $rest_oid, object_name: \"[im_quotejson $rest_object_name]\"}\n" }
+	    json {
+		set komma ",\n"
+		if {0 == $obj_ctr} { set komma "" }
+		set dereferenced_result ""
+		foreach v $valid_vars {
+			eval "set a $$v"
+			regsub -all {\n} $a {\n} a
+			regsub -all {\r} $a {} a
+			append dereferenced_result ", \"$v\": \"[im_quotejson $a]\""
+		}
+		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[im_quotejson $rest_object_name]\"$dereferenced_result}" 
+	    }
 	    default {}
 	}
 	incr obj_ctr
