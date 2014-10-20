@@ -17,20 +17,27 @@ use strict;
 use LWP::UserAgent;
 use Data::Dumper;
 use JSON;
+use Getopt::Long;
 
 # BEGIN {push @INC, '../../intranet-rest/perl'}
 use ProjectOpen;
 
 # --------------------------------------------------------
-# Connection parameters: 
+# Parameters: 
 #
 my $debug = 1;							# Debug: 0=silent, 9=verbose
 
-my $rest_server = "demo.project-open.net";			# May include port number, but no trailing "/"
+my $rest_host = "demo.project-open.net";			# May include port number, but no trailing "/"
 my $rest_email = "sysadmin\@tigerpond.com";			# Email for basic auth, needs to be Admin
 my $rest_password = "system";					# Password for basic authentication
+$rest_host = "localhost:8000";
 
-$rest_server = "localhost:8000";
+my $result = GetOptions (
+    "debug=i"    => \$debug,
+    "host=s"     => \$rest_host,
+    "email=s"    => \$rest_email,
+    "password=s" => \$rest_password
+) or die "Usage:\n\ntest-update.perl --debug 1 --host localhost:8000 --email bbigboss\@tigerpond.com --password ben\n\n";
 
 
 # --------------------------------------------------------
@@ -73,7 +80,7 @@ my $object_type_name_field_hash = {
 # Request the result
 #
 my $ua = LWP::UserAgent->new;
-my $url = "http://$rest_server/intranet-rest/index?format=json";
+my $url = "http://$rest_host/intranet-rest/index?format=json";
 my $req = HTTP::Request->new(GET => $url);
 $req->authorization_basic($rest_email, $rest_password);
 my $response = $ua->request($req);
@@ -101,7 +108,7 @@ my $success = $json->{'success'};
 my $total = $json->{'total'};
 my $message = $json->{'message'};
 my $successfull_p = ($return_code eq "200") && ($success eq "true") && ($total > 50);
-if (!$successfull_p || $debug > 0) {
+if (!$successfull_p || $debug > 1) {
     print "test-update.perl:	list all object types	$successfull_p	$url	return_code=$return_code, success=$success, total=$total, message=$message\n";
 }
 
@@ -110,7 +117,7 @@ if (!$successfull_p || $debug > 0) {
 # Create a generic access object to query the ]po[ HTTP server
 #
 ProjectOpen->new (
-    host	=> $rest_server,
+    host	=> $rest_host,
     email	=> $rest_email,
     password	=> $rest_password,
     debug	=> 0
@@ -135,10 +142,10 @@ foreach my $ot (@object_types) {
     # ----------------------------------------
     # Get the list of objects for the object type
     # and check return codes
-    $url = "http://$rest_server/intranet-rest/$object_type?format=json";
-    print STDERR "test-update.perl: $object_type\n" if ($debug > 0);
-    print STDERR "test-update.perl: $object_type\n" if ($debug > 0);
-    print STDERR "test-update.perl: $object_type: Getting list of $object_type from $url\n" if ($debug > 0);
+    $url = "http://$rest_host/intranet-rest/$object_type?format=json";
+    print STDERR "test-update.perl: $object_type\n" if ($debug > 1);
+    print STDERR "test-update.perl: $object_type\n" if ($debug > 1);
+    print STDERR "test-update.perl: $object_type: Getting list of $object_type from $url\n" if ($debug > 1);
     my $object_json = ProjectOpen->get_object_list($object_type);
     if (ref($object_json) ne "HASH") {
 	print "test-update.perl:	update $object_type	0	$url	Internal error in get_object_update\n";
@@ -155,7 +162,7 @@ foreach my $ot (@object_types) {
     $total = $object_json->{'total'};
     if (0 == $total) {
 	# No objects found of the specific type
-	print STDERR "test-update.perl: $object_type: Didn't find any objects of this type\n" if ($debug > 0);
+	print STDERR "test-update.perl: $object_type: Didn't find any objects of this type\n" if ($debug > 1);
 	next;
     }
    
@@ -169,10 +176,13 @@ foreach my $ot (@object_types) {
 	next;
     }
 
+    print "test-update.perl:	list $object_type	1	$url	$short_msg\n" if ($debug > 0);
+
+    
     # -------------------------------
     # Test the single object GET request
     #
-    print STDERR "test-update.perl: $object_type: Getting single object with OID=$oid\n" if ($debug > 0);
+    print STDERR "test-update.perl: $object_type: Getting single object with OID=$oid\n" if ($debug > 1);
     my $get_object_json = ProjectOpen->get_object($object_type, $oid);
     my $object_data_json = $get_object_json->{'data'}[0];
     print STDERR "test-update.perl: $object_type: get_object($object_type,$oid): " . Dumper($first_object_json) . "\n" if ($debug > 4);
@@ -181,7 +191,8 @@ foreach my $ot (@object_types) {
     $message =~ tr/\n\t/  /;
     $short_msg = substr($message, 0, 40);
     if ("true" ne $success) {
-	print "test-update.perl:	get $oid	0	url of get_object($object_type, $oid)	$short_msg\n";
+	$url = "http://$rest_host/intranet-rest/$object_type/$oid?format=json";
+	print "test-update.perl:	get $oid	0	$url	$short_msg\n";
 	next;
     }
     
@@ -189,7 +200,7 @@ foreach my $ot (@object_types) {
     # Update object using REST with exactly the same data.
     # This tests that there is no error message during update.
     #
-    print STDERR "test-update.perl: $object_type: Updating object OID=$oid with identical data:\n" if ($debug > 0);
+    print STDERR "test-update.perl: $object_type: Updating object OID=$oid with identical data:\n" if ($debug > 1);
     my $update_result = ProjectOpen->post_object($object_type, $oid, $object_data_json);
     print STDERR "test-update.perl: $object_type: post_object: result=" . Dumper($update_result) . "\n" if ($debug > 4);
     # ToDo: Write out error message in case of failure
@@ -213,7 +224,7 @@ foreach my $ot (@object_types) {
     # Let's append a "%" at the end of the name and
     # check that the object was updated correctly.
     #
-    print STDERR "test-update.perl: $object_type: Appended a '%' to name_field=$name_field of object #$oid\n" if ($debug > 0);
+    print STDERR "test-update.perl: $object_type: Appended a '%' to name_field=$name_field of object #$oid\n" if ($debug > 1);
     my $object_name = $object_data_json->{$name_field};
     if (!defined $object_name) {
 	print "test-update.perl:	get object_name for $object_type	0	unknown url	Didn't find '$name_field' property in object_data_json of #$oid\n";
@@ -229,7 +240,7 @@ foreach my $ot (@object_types) {
     # -------------------------------
     # Get the updated data
     #
-    print STDERR "test-update.perl: $object_type: Get the object #$oid ('$object_name') and check if the '%' was successfully written\n" if ($debug > 0);
+    print STDERR "test-update.perl: $object_type: Get the object #$oid ('$object_name') and check if the '%' was successfully written\n" if ($debug > 1);
     $get_object_json = ProjectOpen->get_object($object_type, $oid);
     $object_data_json = $get_object_json->{'data'}[0];
     $success = $get_object_json->{'success'};
@@ -251,7 +262,7 @@ foreach my $ot (@object_types) {
     # -------------------------------
     # Restore the original data
     #
-    print STDERR "test-update.perl: $object_type: Restore the original values of object #$oid\n" if ($debug > 0);
+    print STDERR "test-update.perl: $object_type: Restore the original values of object #$oid\n" if ($debug > 1);
     $object_data_json->{$name_field} = $object_name;
     $update_result = ProjectOpen->post_object($object_type, $oid, $object_data_json);
     print STDERR "test-update.perl: $object_type: post_object: result=" . Dumper($update_result) . "\n" if ($debug > 6);

@@ -77,7 +77,7 @@ ad_proc -private im_rest_post_object_type {
 		}
 		
 		set data "\[{[join $data_list ", "]}\]"
-		set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
+		set result "{\"success\": \"true\",\"message\": \"Object created\",\"data\": $data}"
 		doc_return 200 "application/json" $result
 	    }
 	    default {

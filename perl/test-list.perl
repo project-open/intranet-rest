@@ -18,6 +18,7 @@ use strict;
 use LWP::UserAgent;
 use Data::Dumper;
 use JSON;
+use Getopt::Long;
 
 # BEGIN {push @INC, '../../intranet-rest/perl'}
 use ProjectOpen;
@@ -27,19 +28,25 @@ use ProjectOpen;
 #
 my $debug = 0;							# Debug: 0=silent, 9=verbose
 
-my $rest_server = "demo.project-open.net";			# May include port number, but no trailing "/"
+my $rest_host = "demo.project-open.net";			# May include port number, but no trailing "/"
 my $rest_email = "bbigboss\@tigerpond.com";			# Email for basic authentication
 my $rest_password = "ben";					# Password for basic authentication
 
-$rest_server = "localhost:8000";
+$rest_host = "localhost:8000";
 
+my $result = GetOptions (
+    "debug=i"    => \$debug,
+    "host=s"     => \$rest_host,
+    "email=s"    => \$rest_email,
+    "password=s" => \$rest_password
+) or die "Usage:\n\ntest-list.perl --debug 1 --host localhost:8000 --email bbigboss\@tigerpond.com --password ben\n\n";
 
 
 # --------------------------------------------------------
 # Request the result
 #
 my $ua = LWP::UserAgent->new;
-my $url = "http://$rest_server/intranet-rest/index?format=json";
+my $url = "http://$rest_host/intranet-rest/index?format=json";
 my $req = HTTP::Request->new(GET => $url);
 $req->authorization_basic($rest_email, $rest_password);
 my $response = $ua->request($req);
@@ -78,7 +85,7 @@ if (!$successfull_p || $debug > 0) {
 # Create a generic access object to query the ]po[ HTTP server
 #
 ProjectOpen->new (
-    host	=> $rest_server,
+    host	=> $rest_host,
     email	=> $rest_email,
     password	=> $rest_password,
     debug	=> $debug
@@ -97,7 +104,7 @@ foreach my $ot (@object_types) {
 #    next if ($object_type =~ /acs_message_revision/);        # throws hard error in client
 #    next if ($object_type ne "im_trans_task");
     
-    $url = "http://$rest_server/intranet-rest/$object_type?format=json";
+    $url = "http://$rest_host/intranet-rest/$object_type?format=json";
     print STDERR "test-list.perl: getting objects of type $object_type from $url\n" if ($debug > 0);
 
     my $object_json = ProjectOpen->get_object_list($object_type);
