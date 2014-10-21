@@ -378,7 +378,7 @@ ad_proc -private im_rest_delete_object {
 
     # Only administrators have the right to DELETE
     if {![im_user_is_admin_p $rest_user_id]} {
-	im_rest_error -format $format -http_status 401 -message "User #$rest_user_id is not a system administrator. You need admin rights to perform a DELETE."
+	im_rest_error -format $format -http_status 401 -message "User #$rest_user_id is not a system administrator. You need admin rights for DELETE."
     }
 
     # Deal with certain subtypes
@@ -399,49 +399,36 @@ ad_proc -private im_rest_delete_object {
 	ns_log Notice "im_rest_delete_object: nuke_tcl=$nuke_tcl"
 	eval $nuke_tcl
     } err_msg]} {
+	ns_log Notice "im_rest_delete_object: Error nuking object $rest_oid using TCL code"
 	set destroyed_p 0
 	append destroyed_err_msg "$err_msg\n"
     } else {
+	ns_log Notice "im_rest_delete_object: Successfully nuked object $rest_oid using TCL code"
 	set destroyed_p 1
     }
 
     # Then try with a object_type__delete PL/SQL procedure
     if {!$destroyed_p} {
 	if {[catch {
-
 	    set destructor_name "${nuke_otype}__delete"
 	    set destructor_exists_p [util_memoize [list db_string destructor_exists "select count(*) from pg_proc where lower(proname) = '$destructor_name'"]]
 	    if {$destructor_exists_p} {
+		ns_log Notice "im_rest_delete_object: About to try to nuke using plsql='select $destructor_name($rest_oid)'"
 		db_string destruct_object "select $destructor_name($rest_oid) from dual"
 	    }
 	    set destroyed_p 1
-
+	    ns_log Notice "im_rest_delete_object: Successfully nuked object $rest_oid using PL/SQLL code"
 	} err_msg]} {
 	    append destroyed_err_msg "$err_msg\n"
+	    ns_log Notice "im_rest_delete_object: Error nuking object $rest_oid using PL/SQL code"
 	}
     }
 
     # Try to destruct the object
     if {!$destroyed_p} {
 	im_rest_error -format $format -http_status 404 -message "DELETE for object #$rest_oid of type \"$rest_otype\" created errors: $destroyed_err_msg"
-    }	
-
-
-
-    # Try to destruct the object
-    if {[catch {
-	set destructor_name "${nuke_otype}__delete"
-	set destructor_exists_p [util_memoize [list db_string destructor_exists "select count(*) from pg_proc where lower(proname) = '$destructor_name'"]]
-	if {$destructor_exists_p} {
-	    db_string destruct_object "select $destructor_name($rest_oid) from dual"
-	} else {
-	    set nuke_tcl [list "${nuke_otype}_nuke" -current_user_id $rest_user_id $rest_oid]
-	    ns_log Notice "im_rest_delete_object: nuke_tcl=$nuke_tcl"
-	    eval $nuke_tcl
-	}
-    } err_msg]} {
-	im_rest_error -format $format -http_status 404 -message "DELETE for object #$rest_oid of type \"$rest_otype\" returned an error: $err_msg"
-    }	
+	return
+    }
 
     # The delete was successful - return a suitable message.
     switch $format {
