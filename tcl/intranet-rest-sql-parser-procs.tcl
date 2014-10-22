@@ -64,129 +64,6 @@ ad_proc -public im_rest_valid_sql {
 }
 
 
-
-ad_proc -public im_rest_valid_sql_disabled {
-    -string:required
-    {-variables {} }
-    {-debug 1}
-} {
-    Returns 1 if "where_clause" is a valid where_clause or 0 otherwise.
-    The validator is based on applying a number of rules using a rule engine.
-    Return the validation result if debug=1.
-} {
-    ns_log Notice "im_rest_valid_sql: sql=$string, vars=$variables"
-
-    # An empty string is a valid SQL...
-    if {"" == $string} { return 1 }
-
-    # ------------------------------------------------------
-    # Massage the string so that it suits the rule engine.
-
-    # Reduce all characters to lower case
-    set string [string tolower $string]
-
-    # Add spaces around the string
-    set string " $string "
-
-    # Replace ocurrences of double (escaped) single-ticks with "quote"
-    regsub -all {''} $string { quote } string
-
-    # Add an extra space between all "comparison" strings in the where clause
-    regsub -all {([\>\<\=\!]+)} $string { \1 } string
-
-    # Add an extra space around parentesis
-    regsub -all {([\(\)])} $string { \1 } string
-
-    # Add an extra space around kommas
-    regsub -all {(,)} $string { \1 } string
-
-    # Replace multiple spaces by a single one
-    regsub -all {\s+} $string { } string
-
-
-    # ------------------------------------------------------
-    # Rules have a format LHS <- RHS (Left Hand Side <- Right Hand Side)
-    set rules {
-	from {from [[:alnum:]_]+ [[:alnum:]_]+ ,}
-	where {from [[:alnum:]_]+ [[:alnum:]_]+ where}
-	query {select [[:alnum:]_]+}
-	query {from [[:alnum:]_]+}
-	query {where [[:alnum:]_]+ in \( query \)}
-	query {where cond}
-	query {query query}
-	query {query where val}
-	query {query val}
-	query {query \( val \)}
-	cond {val between val and val}
-	cond {cond and cond}
-	cond {cond and val}
-	cond {cond val}
-	cond {cond or cond}
-	cond {\( cond \)}
-	cond {val = val}
-	cond {val like val}
-	cond {[[:alnum:]_]+ like val}
-	cond {val > val}
-	cond {val >= val}
-	cond {val < val}
-	cond {val <= val}
-	cond {val <> val}
-	cond {val != val}
-	cond {val is null}
-	cond {[[:alnum:]_]+ @@ val}
-	cond {val is not null}
-	cond {val in \( val \)}
-	cond {val in \( query \)}
-	val  {val , val}
-	val  {val val}
-	val  {[0-9]+}
-	val  {[[:alnum:]_]+\.[[:alnum:]_]+}
-	val  {[0-9]+\-[0-9]+\-[0-9]+t[0-9]+\:[0-9]+\:[0-9]+}
-	val  {\'[[:alnum:]_\ \-\%\@\.]*\'}
-	val  {[[:alnum:]_]+ \( [[:alnum:]_]+ \)}
-    }
-
-    # Add rules for every variable saying that it's a var.
-    lappend variables member_id user_id group_id object_id_one object_id_two
-    foreach var $variables {
-	lappend rules val
-	lappend rules $var
-    }
-
-    # Applies a number of rules to a string, eventually rewriting
-    # the string into a single toplevel term.
-    # String is expected to have spaces around any payload, and 
-    # also each of its tokens surrounded by spaces
-    set fired 1
-    set debug_result ""
-    while {$fired} {
-	set fired 0
-	foreach {lhs rhs} $rules {
-	    set org_string $string
-	    incr fired [regsub -all " $rhs " $string " $lhs " string]
-	    if {$string != $org_string} {
-		append debug_result "$lhs -> $rhs: '$string'\n"
-		ns_log Notice "im_rest_valid_sql: $lhs -> $rhs: '$string'\n"
-	    }
-	}
-    }
-
-    set string [string trim $string]
-    set result 0
-    if {"" == $string || "cond" == $string || "query" == $string || "val" == $string} { set result 1 }
-
-    # Show the application of rules for debugging
-    if {$debug} { 
-	append debug_result "result=$result\n"
-	ns_log Notice "im_rest_valid_sql: result=$result"
-	# return $debug_result 
-    }
-
-    return $result
-}
-
-
-
 # ----------------------------------------------------------------------
 # SQL Parser
 # ----------------------------------------------------------------------
@@ -208,7 +85,8 @@ ad_proc -public sql_select {str} {
     set select_cols [list]
     while {$continue} {
 	set s0 [sql_exact $str "*"]
-#	if {"" == [lindex $s0 0]} { set s0 [sql_functions $str] }
+	if {"" == [lindex $s0 0]} { set s0 [sql_function_count $str] }
+	if {"" == [lindex $s0 0]} { set s0 [sql_function $str] }
 	if {"" == [lindex $s0 0]} { set s0 [sql_value_litteral $str] }
 	if {"" == [lindex $s0 0]} { return [list "" $str_org "Select - expecting '*', function or literal"] }
 	lappend select_cols [lindex $s0 0]
@@ -594,6 +472,46 @@ ad_proc -public sql_compare {str} {
     return [list [list operator [lindex $op 0] select [lindex $sel 0]] $str ""]
 }
 
+
+# function_count = count ( * )
+ad_proc -public sql_function_count {str} {
+    ns_log Notice "sql_function_count: $str"
+
+    set name [sql_name $str]
+    if {"count" != [lindex $name 0]} { return [list "" $str "Not a count function - expecting 'count' as first literal"] }
+    set str [lindex $name 1]
+
+    set par_open [sql_exact $str "("]
+    if {"" == [lindex $par_open 0]} { return [list "" $str "Not a count function - expecting '(' after 'count'"] }
+    set str [lrange $str 1 end]
+
+    set asterisk [sql_exact $str "*"]
+    if {"*" != [lindex $asterisk 0]} { return [list "" $str "Not a count function - expecting '*' after 'count(' "] }
+    set str [lrange $str 1 end]
+
+    set par_close [sql_exact $str ")"]
+    if {"" == [lindex $par_close 0]} { return [list "" $str "Not a procedure_end - expecting ')' as last literal"] }
+    set str [lindex $par_close 1]
+
+    return [list [list function [lindex $name 0] procedure_end "*"] $str ""]
+}
+
+# function = name procedure_end
+ad_proc -public sql_function {str} {
+    ns_log Notice "sql_function: $str"
+
+    set name [sql_name $str]
+    if {"" == [lindex $name 0]} { return [list "" $str "Not a function - expecting a name as first literal"] }
+    set str [lindex $name 1]
+
+    set procedure_end [sql_procedure_end $str]
+    if {"" == [lindex $procedure_end 0]} { return [list "" $str "Not a function - expecting a procedure_end after name"] }
+    set str [lindex $procedure_end 1]
+
+    return [list [list function [lindex $name 0] procedure_end [lindex $procedure_end 0]] $str ""]
+}
+
+
 ad_proc -public sql_value_litteral {str} {
     ns_log Notice "sql_value_litteral: $str"
     set str_org $str
@@ -687,7 +605,7 @@ ad_proc -public sql_keyword {str} {
     # ns_log Notice "sql_keyword: $str"
 
     set s0 [lindex $str 0]
-    set keywords {all and any asc ascending avg between by collate containing count desc descending distinct escape exists from full group having in is inner insert into join left like lower max min not null or order outer right set singular some starting sum table union update upper values where with}
+    set keywords {all and any asc ascending avg between by collate containing desc descending distinct escape exists from full group having in is inner insert into join left like not null or order outer right set singular some starting table union update values where with}    
     set found_keyword ""
     foreach keyword $keywords {
 	if {$s0 == $keyword} { return [list $keyword [lrange $str 1 end] ""] }
