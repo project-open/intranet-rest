@@ -187,9 +187,17 @@ ad_proc -private im_rest_post_object_type_im_ticket {
 	set ticket_note "" 
 	set hash_array(ticket_note) $ticket_note
     }
+    if {![info exists ticket_status_id]} { 
+	set ticket_status_id 30000
+	set hash_array(ticket_status_id) $ticket_status_id
+    }
+    if {![info exists ticket_type_id]} { 
+	set ticket_type_id 30110
+	set hash_array(ticket_type_id) $ticket_type_id
+    }
 
     # Check that all required variables are there
-    set required_vars {project_name parent_id ticket_status_id ticket_type_id}
+    set required_vars {project_name parent_id}
     foreach var $required_vars {
 	if {![info exists $var]} { 
 	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
@@ -215,7 +223,7 @@ ad_proc -private im_rest_post_object_type_im_ticket {
     # Check for valid parent_id
     set company_id [db_string ticket_company "select company_id from im_projects where project_id = :parent_id" -default ""]
     if {"" == $company_id} {
-	return [im_rest_error -format $format -http_status 406 -message "Invalid $rest_otype_pretty field 'parent_id': parent_id should represent an 'open' project of type 'Service Level Agreement'."]
+	return [im_rest_error -format $format -http_status 406 -message "Invalid $rest_otype_pretty field 'parent_id': parent_id should represent an 'open' project of type 'Service Level Agreement'. This SLA will become the container for the ticket."]
     }
 
     if {[catch {
@@ -705,7 +713,7 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 
 	set rest_oid [db_string new_absence "
 		SELECT im_user_absence__new(
-			:absence_id,
+			null,
 			'im_user_absence',
 			now(),
 			:rest_user_id,
@@ -713,7 +721,7 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 			null,
 
 			:absence_name,
-			:absence_owner_id,
+			:owner_id,
 			$start_date_sql,
 			$end_date_sql,
 

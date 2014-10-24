@@ -394,12 +394,12 @@ ad_proc -private im_rest_delete_object {
 
     # Destroy the object. Try first with an object_type_nuke TCL procedure.
     set destroyed_err_msg ""
-    if {[catch {
 	set nuke_tcl [list "${nuke_otype}_nuke" -current_user_id $rest_user_id $rest_oid]
 	ns_log Notice "im_rest_delete_object: nuke_tcl=$nuke_tcl"
 	eval $nuke_tcl
+    if {[catch {
     } err_msg]} {
-	ns_log Notice "im_rest_delete_object: Error nuking object $rest_oid using TCL code"
+	ns_log Notice "im_rest_delete_object: Error nuking object $rest_oid using TCL code: $err_msg"
 	set destroyed_p 0
 	append destroyed_err_msg "$err_msg\n"
     } else {

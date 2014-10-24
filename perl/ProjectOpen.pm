@@ -186,6 +186,50 @@ sub _http_post_request {
 }
 
 
+
+
+# Low-level HTTP request to write data to ]project-open[.
+# Higher-level procedures will use this procecure to retreive specific
+# objects.
+# Example: _http_delete_request("/intranet-rest/im_project/12345");
+# Parameters:
+#	self:	reference to ProjectOpen class
+#	path:	the path to the resource ('/intranet-rest/object_type/object_id')
+#
+sub _http_delete_request {
+    my $self = shift;
+    my $uri = shift;
+
+    # Show some debug messages
+    my $debug = ProjectOpen->debug;
+    print STDERR sprintf "ProjectOpen: _http_delete_request: uri=%s using email=%s, pwd=%s\n", 
+        $uri, ProjectOpen->email, ProjectOpen->password if ($debug > 3);
+
+    # Perform the HTTP request. The request is authenticated using Basic Auth.
+    my $ua = LWP::UserAgent->new;
+    my $req = HTTP::Request->new(DELETE => $uri);
+    $req->authorization_basic(ProjectOpen->email, ProjectOpen->password);
+    my $res = $ua->request($req);
+    print STDERR sprintf "ProjectOpen: request: HTTP request failed: %s\n", 
+        $res->status_line unless $res->is_success;
+
+    print STDERR sprintf "ProjectOpen: content=%s\n", $res->content if ($debug > 5);
+
+    # Parse the returned data and return the result
+    my $json;
+    eval {
+	$json = decode_json($res->content);
+    };
+
+    if ($@) {
+	my $json_error = "{\"success\": false, \"message\": \"Error parsing JSON: $@\"}";
+	$json = decode_json($json_error);
+    }
+    
+    return $json;
+}
+
+
 # Retreive a list of objects of a certain type.
 # Example: get_object_list("im_conf_item");
 # Parameters:
