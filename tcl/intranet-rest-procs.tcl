@@ -225,12 +225,9 @@ ad_proc -private im_rest_call_get {
     array set query_hash {}
     foreach query_piece $query_pieces {
 	if {[regexp {^([^=]+)=(.+)$} $query_piece match var val]} {
-	    # ns_log Notice "im_rest_call_get: var='$var', val='$val'"
-
 	    # Additional decoding: replace "+" by " "
 	    regsub -all {\+} $var { } var
 	    regsub -all {\+} $val { } val
-
 	    set var [ns_urldecode $var]
 	    set val [ns_urldecode $val]
 	    ns_log Notice "im_rest_call_get: var='$var', val='$val'"
@@ -267,10 +264,12 @@ ad_proc -private im_rest_call_get {
     # Security checks
     set alert_p 0
     set alert_p [expr $alert_p || [im_security_alert_check_integer -location "im_rest_call: user_id" -value $auth_user_id]]
-    set alert_p [expr $alert_p || [im_security_alert_check_integer -location "im_rest_call: rest_oid" -value $rest_oid]]
-    set alert_p [expr $alert_p || [im_security_alert_check_alphanum -location "im_rest_call: rest_otype" -value $rest_otype]]
+    if {"data-source" != $rest_otype} {
+	set alert_p [expr $alert_p || [im_security_alert_check_integer -location "im_rest_call: rest_oid" -value $rest_oid]]
+	set alert_p [expr $alert_p || [im_security_alert_check_alphanum -location "im_rest_call: rest_otype" -value $rest_otype]]
+    }
     if {$alert_p} {
-    	return [im_rest_error -format $format -http_status 500 -message "Internal error: Found a security error, please read your notifications"]
+    	return [im_rest_error -format $format -http_status 500 -message "Internal error: Found a security error, please check your security notifications"]
     }
 
     # Call the main request processing routine
@@ -312,7 +311,12 @@ ad_proc -private im_rest_page {
 		    [list query_hash_pairs $query_hash_pairs] \
     ]
 
-    set result [ad_parse_template -params $params "/packages/intranet-rest/www/$rest_otype"]
+    set file "/packages/intranet-rest/www/$rest_otype"
+    if {"data-source" == $rest_otype} {
+	append file "/$rest_oid"
+    }
+
+    set result [ad_parse_template -params $params $file]
     switch $format {
 	json { set mime_type "application/json" }
 	default { set mime_type "text/html" }
@@ -343,7 +347,8 @@ ad_proc -private im_rest_call {
     # Special treatment for /intranet-rest/ and /intranet/rest/index URLs
     #
     if {"" == $rest_otype} { set rest_otype "index" }
-    set pages {"" index version auto-login dynfield-widget-values }
+
+    set pages {"" index version auto-login dynfield-widget-values "data-source" }
     if {[lsearch $pages $rest_otype] >= 0} {
 	return [im_rest_page \
 		    -format $format \
