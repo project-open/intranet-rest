@@ -1340,12 +1340,12 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
     # Permissions
-    set add_p [im_permission $rest_user_id "add_projects"]
+    set add_p [im_permission $rest_user_id "add_hours"]
+    set add_all_p [im_permission $rest_user_id "add_hours_all"]
     if {!$add_p} {
-	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to add hours"] 
     }
 
-    
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
