@@ -106,10 +106,15 @@ if ($@) {
 
 my $success = $json->{'success'};
 my $total = $json->{'total'};
+if (!defined $total) { $total = 0; }
+my $successfull_p = ($return_code eq "200") && ($success eq "true" || $success eq "1") && ($total > 50);
 my $message = $json->{'message'};
-my $successfull_p = ($return_code eq "200") && ($success eq "true") && ($total > 50);
 if (!$successfull_p || $debug > 1) {
-    print "test-update.perl:	list all object types	$successfull_p	$url	return_code=$return_code, success=$success, total=$total, message=$message\n";
+    print "test-update.perl:	list all object types	'$successfull_p'	$url	return_code=$return_code, success=$success, total=$total, message=$message\n";
+}
+
+if (!$successfull_p) {
+    die "test-update.perl:\tError getting the list of objects - aborting\n";
 }
 
 
