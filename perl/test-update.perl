@@ -140,9 +140,7 @@ foreach my $ot (@object_types) {
     next if ($object_type =~ /::/);
 #    next if ($object_type =~ /acs_message_revision/);        # throws hard error in client
 #    next if ($object_type ne "im_cost_center");
-
 #    next if (!($object_type =~ /^im_/));
-
     
     # ----------------------------------------
     # Get the list of objects for the object type
@@ -160,7 +158,7 @@ foreach my $ot (@object_types) {
     my $message = $object_json->{'message'};
     $message =~ tr/\n\t/  /;
     my $short_msg = substr($message, 0, 40);
-    if ("true" ne $success) {
+    if ("true" ne $success && "1" ne $success) {
 	print "test-update.perl:	list $object_type	0	$url	$short_msg\n";
 	next;
     }
@@ -195,7 +193,7 @@ foreach my $ot (@object_types) {
     $message = $get_object_json->{'message'};
     $message =~ tr/\n\t/  /;
     $short_msg = substr($message, 0, 40);
-    if ("true" ne $success) {
+    if ("true" ne $success && "1" ne $success) {
 	$url = "http://$rest_host/intranet-rest/$object_type/$oid?format=json";
 	print "test-update.perl:	get $oid	0	$url	$short_msg\n";
 	next;
@@ -252,7 +250,7 @@ foreach my $ot (@object_types) {
     $message = $get_object_json->{'message'};
     $message =~ tr/\n\t/  /;
     $short_msg = substr($message, 0, 40);
-    if ("true" ne $success) {
+    if ("true" ne $success && "1" ne $success) {
 	print "test-update.perl:	get $oid	0	$url	$short_msg\n";
 	next;
     }
