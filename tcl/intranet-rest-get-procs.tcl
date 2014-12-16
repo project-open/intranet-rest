@@ -261,8 +261,6 @@ ad_proc -private im_rest_get_object_type {
 		    eval "set a $$v"
 		    set a [string map $chars_to_be_escaped_list $a]
                     append dereferenced_result ", \"$v\": \"$a\""
-
-		    ns_log Notice "im_rest_get_object_type: var=$v, value=$a"
 		}
 		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[string map $chars_to_be_escaped_list $object_name]\"$dereferenced_result}" 
 	    }
