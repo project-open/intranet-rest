@@ -188,7 +188,8 @@ foreach my $ot (@object_types) {
     print STDERR "test-update.perl: $object_type: Getting single object with OID=$oid\n" if ($debug > 1);
     my $get_object_json = ProjectOpen->get_object($object_type, $oid);
     my $object_data_json = $get_object_json->{'data'}[0];
-    print STDERR "test-update.perl: $object_type: get_object($object_type,$oid): " . Dumper($first_object_json) . "\n" if ($debug > 4);
+    print STDERR "test-update.perl: $object_type: get_object($object_type,$oid): " . Dumper($object_data_json) . "\n" if ($debug > 6);
+
     $success = $get_object_json->{'success'};
     $message = $get_object_json->{'message'};
     $message =~ tr/\n\t/  /;
@@ -235,10 +236,10 @@ foreach my $ot (@object_types) {
     }
     $object_data_json->{$name_field} = $object_name . "%";
 
+    print STDERR "test-update.perl: $object_type: post_object: data=" . Dumper($object_data_json) . "\n" if ($debug > 8);
     $update_result = ProjectOpen->post_object($object_type, $oid, $object_data_json);
     print STDERR "test-update.perl: $object_type: post_object: result=" . Dumper($update_result) . "\n" if ($debug > 6);
     # ToDo: Write out error message in case of failure
-
 
     # -------------------------------
     # Get the updated data
