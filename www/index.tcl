@@ -1,4 +1,4 @@
-# /packages/intranet-reste/www/index.tcl
+# /packages/intranet-rest/www/index.tcl
 #
 # Copyright (C) 2009 ]project-open[
 #
@@ -126,7 +126,12 @@ switch $format {
 	# ---------------------------------------------------------
 	
 	set json_p 1
-	set otype_sql "select * from acs_object_types aot where aot.object_type not in ($not_in_object_type) order by object_type"
+	set otype_sql "
+		select	*
+		from	acs_object_types aot
+		where	aot.object_type not in ($not_in_object_type)
+		order by object_type
+	"
 	set otype_json ""
 	set otype_cnt 0
 	db_foreach otypes $otype_sql { 
