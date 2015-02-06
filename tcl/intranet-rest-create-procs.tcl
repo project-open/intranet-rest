@@ -1954,3 +1954,104 @@ ad_proc -private im_rest_post_object_type_im_company_employee_rel {
     return [array get hash_array]
 }
 
+
+
+
+
+# --------------------------------------------------------
+# im_sencha_preference
+#
+
+ad_proc -private im_rest_post_object_type_im_sencha_preference {
+    { -format "json" }
+    { -rest_user_id 0 }
+    { -rest_otype "" }
+    { -rest_oid "" }
+    { -content "" }
+    { -debug 0 }
+} {
+    Handler for POST calls on particular im_sencha_preference objects.
+} {
+    ns_log Notice "im_rest_post_object_im_sencha_preference: rest_oid=$rest_oid"
+
+    # Permissions
+    set add_p [im_permission $rest_user_id "add_projects"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+    }
+
+    set creation_user $rest_user_id
+    set creation_ip [ad_conn peeraddr]
+
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
+    ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
+
+    # Default values for not required vars
+    if {![info exists hash_array(preference_status_id)] || "" == $hash_array(preference_status_id)} { set hash_array(preference_status_id) [im_sencha_preference_status_active] }
+    if {![info exists hash_array(preference_type_id)] || "" == $hash_array(preference_type_id)} { set hash_array(preference_type_id) [im_sencha_preference_type_default] }
+    if {![info exists hash_array(preference_object_id)] || "" == $hash_array(preference_object_id)} { set hash_array(preference_object_id) $rest_user_id }
+
+    # write hash values as local variables
+    foreach key [array names hash_array] {
+	set value $hash_array($key)
+	ns_log Notice "im_rest_post_object_type_$rest_otype: key=$key, value=$value"
+	set $key $value
+    }
+
+    # Check that all required variables are there
+    set required_vars {preference_key preference_value}
+    foreach var $required_vars {
+	if {![info exists $var]} { 
+	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
+	}
+    }
+
+    # Check for duplicate
+    set dup_sql "
+	select	preference_id
+	from	im_sencha_preferences
+	where	preference_type_id = :preference_type_id and
+		preference_object_id = :preference_object_id and
+		preference_key = :preference_key
+    "
+    set rest_oid [db_string duplicates $dup_sql -default 0]
+    if {$rest_oid} {
+	# Exception: Just update the preference.
+	db_dml update_preference "
+		update im_sencha_preferences set
+			preference_value = :preference_value
+		where	preference_id = :rest_oid
+        "
+	im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $preference_status_id -type_id $preference_type_id -action after_update
+    } else {
+	# Create a new preference
+	if {[catch {
+	    set rest_oid [db_string new_im_sencha_preference "
+		select im_sencha_preference__new (
+			null,			-- preference_id
+			:rest_otype,		-- object_type
+			now(),			-- creation_date
+			:creation_user,
+			:creation_ip,
+			null,			-- context_id
+
+			:preference_type_id,
+			:preference_status_id,
+			:preference_object_id,
+			:preference_key,
+			:preference_value
+		)
+	    "]
+	} err_msg]} {
+	    return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
+	}
+
+	im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $preference_status_id -type_id $preference_type_id -action after_create
+    }
+   
+
+    set hash_array(rest_oid) $rest_oid
+    set hash_array(rel_id) $rest_oid
+    return [array get hash_array]
+}
