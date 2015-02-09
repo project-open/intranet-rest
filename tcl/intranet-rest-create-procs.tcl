@@ -2000,7 +2000,7 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
     }
 
     # Check that all required variables are there
-    set required_vars {preference_key preference_value}
+    set required_vars {preference_url preference_key preference_value}
     foreach var $required_vars {
 	if {![info exists $var]} { 
 	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
@@ -2011,8 +2011,8 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
     set dup_sql "
 	select	preference_id
 	from	im_sencha_preferences
-	where	preference_type_id = :preference_type_id and
-		preference_object_id = :preference_object_id and
+	where	preference_object_id = :preference_object_id and
+		preference_url = :preference_url and
 		preference_key = :preference_key
     "
     set rest_oid [db_string duplicates $dup_sql -default 0]
@@ -2039,6 +2039,7 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
 			:preference_type_id,
 			:preference_status_id,
 			:preference_object_id,
+			:preference_url,
 			:preference_key,
 			:preference_value
 		)
@@ -2050,7 +2051,6 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
 	im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $preference_status_id -type_id $preference_type_id -action after_create
     }
    
-
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
     return [array get hash_array]
