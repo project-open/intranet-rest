@@ -299,7 +299,7 @@ ad_proc -private im_rest_page {
     { -query_hash_pairs {} }
     { -debug 0 }
 } {
-    The user has requested /intranet-rest/ or /intranet-rest/index
+    The user has requested /intranet-rest/index or /intranet-rest/data-source/*
 } {
     ns_log Notice "im_rest_index_page: rest_otype=$rest_otype, query_hash=$query_hash_pairs"
 
@@ -393,15 +393,6 @@ ad_proc -private im_rest_call {
 				-query_hash_pairs $query_hash_pairs \
 			       ]
 		}
-		im_invoice_item {
-		    return [im_rest_get_im_invoice_items \
-				-format $format \
-				-rest_user_id $rest_user_id \
-				-rest_otype $rest_otype \
-				-rest_oid $rest_oid \
-				-query_hash_pairs $query_hash_pairs \
-			       ]
-		}
 		im_hour {
 		    return [im_rest_get_im_hours \
 				-format $format \
@@ -413,6 +404,24 @@ ad_proc -private im_rest_call {
 		}
 		im_hour_interval {
 		    return [im_rest_get_im_hour_intervals \
+				-format $format \
+				-rest_user_id $rest_user_id \
+				-rest_otype $rest_otype \
+				-rest_oid $rest_oid \
+				-query_hash_pairs $query_hash_pairs \
+			       ]
+		}
+		im_invoice_item {
+		    return [im_rest_get_im_invoice_items \
+				-format $format \
+				-rest_user_id $rest_user_id \
+				-rest_otype $rest_otype \
+				-rest_oid $rest_oid \
+				-query_hash_pairs $query_hash_pairs \
+			       ]
+		}
+		im_timesheet_task_dependency {
+		    return [im_rest_get_im_timesheet_task_dependencies \
 				-format $format \
 				-rest_user_id $rest_user_id \
 				-rest_otype $rest_otype \

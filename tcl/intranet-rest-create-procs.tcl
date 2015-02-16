@@ -1436,6 +1436,110 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
 
 
 
+
+
+# --------------------------------------------------------
+# Task Dependencies - It's not really an object type,
+# so we have to fake it here.
+# --------------------------------------------------------
+
+ad_proc -private im_rest_post_object_type_im_timesheet_task_dependency {
+    { -format "json" }
+    { -rest_user_id 0 }
+    { -content "" }
+    { -rest_otype "im_timesheet_task_dependency" }
+    { -rest_otype_pretty "Timesheet Task Dependency" }
+} {
+    Create a new task dependency and return the id.
+} {
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
+
+    # Permissions
+    set add_p [im_permission $rest_user_id "add_timesheet_tasks"]
+    if {!$add_p} {
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create timesheet task dependencies"] 
+    }
+
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
+    ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
+
+    # Set default variables
+    if {![info exists hash_array(dependency_status_id)]} { set hash_array(dependency_status_id) 9740 }
+    if {![info exists hash_array(dependency_type_id)]} { set hash_array(dependency_type_id) 9650 }
+    if {![info exists hash_array(difference)]} { set hash_array(difference) 0 }
+    if {![info exists hash_array(hardness_type_id)]} { set hash_array(hardness_type_id) "" }
+
+    # write hash values as local variables
+    foreach key [array names hash_array] {
+	set value $hash_array($key)
+	ns_log Notice "im_rest_post_object_type_$rest_otype: key=$key, value=$value"
+	set $key $value
+    }
+
+    # Check that all required variables are there
+    set required_vars {task_id_one task_id_two dependency_type_id}
+    foreach var $required_vars {
+	if {![info exists $var]} { 
+	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
+	}
+    }
+
+    # Check for duplicate
+    set dup_sql "
+		select  dependency_id
+		from    im_timesheet_task_dependencies
+		where	task_id_one = :task_id_one and
+			task_id_two = :task_id_two
+    "
+    set rest_oid [db_string duplicate $dup_sql -default ""]
+    if {"" != $rest_oid} {
+	ns_log Warning "im_rest_post_object_type_$rest_otype: duplicate dependency: task_id_one=$task_id_one, task_id_two=$task_id_two"
+	set hash_array(rest_oid) $rest_oid
+	set hash_array(dependency_id) $rest_oid
+	return [array get hash_array]
+	# return [im_rest_error -format $format -http_status 406 -message "Duplicate $rest_otype_pretty: Your objectalready exists with the specified task_id_one and task_id_two."]
+    }
+
+    if {[catch {
+	set rest_oid [db_string item_id "select nextval('im_timesheet_task_dependency_seq')"]
+	db_dml new_timesheet_task_dependency "
+		insert into im_timesheet_task_dependencies (
+			dependency_id,
+			task_id_one,
+			task_id_two,
+			dependency_type_id,
+			dependency_status_id,
+			difference,
+			hardness_type_id
+		) values (
+			:rest_oid,
+			:task_id_one,
+			:task_id_two,
+			:dependency_type_id,
+			:dependency_status_id,
+			:difference,
+			:hardness_type_id
+		)
+	"
+    } err_msg]} {
+	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
+    }
+
+    if {[catch {
+	im_rest_object_type_update_sql \
+	    -rest_otype $rest_otype \
+	    -rest_oid $rest_oid \
+	    -hash_array [array get hash_array]
+    } err_msg]} {
+	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
+    }
+
+    set hash_array(rest_oid) $rest_oid
+    set hash_array(dependency_id) $rest_oid
+    return [array get hash_array]
+}
+
 # --------------------------------------------------------
 # im_note
 #

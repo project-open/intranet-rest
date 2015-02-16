@@ -1,4 +1,4 @@
-# /packages/sencha-task-editor/www/treegrid-update.tcl
+# /packages/intranet-rest/www/data-source/project-trask-tree-update.tcl
 #
 # Copyright (C) 2013 ]project-open[
 
@@ -23,21 +23,21 @@ set tuple_list [split $query_string "&"]
 foreach tuple $tuple_list {
     if {[regexp {^([^=]+)\=(.*)} $tuple match var value]} {
 	set var_hash($var) $value
-	ns_log Notice "xxx: $var=$value"
+	ns_log Notice "project-trask-tree-update: $var=$value"
     }
 }
 
 # Parse the JSON POST data
 set post_content [ns_conn content]
 array set json_hash [util::json::parse $post_content]
-# ns_log Notice "xxx: json_content=[array get json_hash]"
+# ns_log Notice "project-trask-tree-update: json_content=[array get json_hash]"
 set json_list $json_hash(_object_);
-# ns_log Notice "xxx: json_list=$json_list"
+# ns_log Notice "project-trask-tree-update: json_list=$json_list"
 array set json_var_hash $json_list
 foreach var [array names json_var_hash] {
     set value $json_var_hash($var)
     set var_hash($var) $value
-    ns_log Notice "xxx: $var=$value"
+    ns_log Notice "project-trask-tree-update: $var=$value"
 }
 
 # Check that there was a task_id variable

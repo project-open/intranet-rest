@@ -646,6 +646,123 @@ ad_proc -private im_rest_get_im_hour_intervals {
 }
 
 
+ad_proc -private im_rest_get_im_timesheet_task_dependencies {
+    { -format "json" }
+    { -rest_user_id 0 }
+    { -rest_otype "" }
+    { -rest_oid "" }
+    { -query_hash_pairs {} }
+    { -debug 0 }
+} {
+    Handler for GET rest calls on task dependencies
+} {
+    ns_log Notice "im_rest_get_timesheet_task_dependencies: format=$format, rest_user_id=$rest_user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
+    
+    array set query_hash $query_hash_pairs
+    if {"" != $rest_oid} { set query_hash(dependency_id) $rest_oid }
+    set base_url "[im_rest_system_url]/intranet-rest"
+    set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_timesheet_task_dependency'" -default 0]]
+
+    # "harmless" data-type, we can allow reading for everybody
+    set rest_otype_read_all_p 1
+
+    # -------------------------------------------------------
+    # Check if there is a where clause specified in the URL and validate the clause.
+    set where_clause ""
+    if {[info exists query_hash(query)]} { set where_clause $query_hash(query)}
+    # Determine the list of valid columns for the object type
+    set valid_vars {dependency_id dependency_status_id dependency_type_id task_id_one task_id_two difference hardness_type_id}
+
+
+    # -------------------------------------------------------
+    # Check if there are "valid_vars" specified in the HTTP header
+    # and add these vars to the SQL clause
+    set where_clause_list [list]
+    foreach v $valid_vars {
+        if {[info exists query_hash($v)]} { lappend where_clause_list "$v=$query_hash($v)" }
+    }
+    if {"" != $where_clause && [llength $where_clause_list] > 0} { append where_clause " and " }
+    append where_clause [join $where_clause_list " and "]
+
+    # Check that the query is a valid SQL where clause
+    set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
+    if {!$valid_sql_where} {
+	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
+	return
+    }
+    if {"" != $where_clause} { set where_clause "and $where_clause" }
+
+    # Select SQL: Pull out timesheet_task_dependencies.
+    set sql "
+	select	d.*,
+		d.dependency_id as rest_oid,
+		'Task Dependency ' || task_id_one || ' - ' || task_id_two as object_name
+	from	im_timesheet_task_dependencies d
+	where	1=1
+		$where_clause
+    "
+
+    # Append pagination "LIMIT $limit OFFSET $start" to the sql.
+    set unlimited_sql $sql
+    append sql [im_rest_object_type_pagination_sql -query_hash_pairs $query_hash_pairs]
+
+    set result ""
+    set obj_ctr 0
+    db_foreach objects $sql {
+
+	# Check permissions
+	set read_p $rest_otype_read_all_p
+	if {!$read_p} { continue }
+
+	set url "$base_url/$rest_otype/$rest_oid"
+	switch $format {
+	    html { 
+		append result "<tr>
+			<td>$rest_oid</td>
+			<td><a href=\"$url?format=html\">$object_name</a>
+		</tr>\n" 
+	    }
+	    json {
+		set komma ",\n"
+		if {0 == $obj_ctr} { set komma "" }
+		set dereferenced_result ""
+		foreach v $valid_vars {
+			eval "set a $$v"
+			regsub -all {\n} $a {\n} a
+			regsub -all {\r} $a {} a
+			append dereferenced_result ", \"$v\": \"[im_quotejson $a]\""
+		}
+		append result "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[im_quotejson $object_name]\"$dereferenced_result}" 
+	    }
+	    default {}
+	}
+	incr obj_ctr
+    }
+
+    switch $format {
+	html { 
+	    set page_title "object_type: $rest_otype"
+	    im_rest_doc_return 200 "text/html" "
+		[im_header $page_title [im_rest_header_extra_stuff]][im_navbar]<table>
+		<tr class=rowtitle><td class=rowtitle>object_id</td><td class=rowtitle>Link</td></tr>$result
+		</table>[im_footer]
+	    "
+	}
+	json {
+	    set result "{\"success\": true,\n\"total\": $obj_ctr,\n\"message\": \"im_rest_get_im_timesheet_task_dependencies: Data loaded\",\n\"data\": \[\n$result\n\]\n}"
+	    im_rest_doc_return 200 "application/json" $result
+	    return
+	}
+    }
+
+    return
+}
+
+
+
+
+
+
 ad_proc -private im_rest_get_im_categories {
     { -format "json" }
     { -rest_user_id 0 }

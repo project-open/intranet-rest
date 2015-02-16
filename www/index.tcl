@@ -232,6 +232,7 @@ switch $format {
 	array set crud_hash {
 		im_invoice "<b>CRUL</b>"
 		im_invoice_item "<b>CRUL</b>"
+		im_timesheet_task_dependency "<b>CRUL</b>"
 		im_project "<b>CRUL</b>"
 		im_trans_task "<b>CRUL</b>"
 	}
