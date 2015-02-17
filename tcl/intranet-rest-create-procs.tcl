@@ -1465,9 +1465,9 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task_dependency {
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
     # Set default variables
-    if {![info exists hash_array(dependency_status_id)]} { set hash_array(dependency_status_id) 9740 }
-    if {![info exists hash_array(dependency_type_id)]} { set hash_array(dependency_type_id) 9650 }
-    if {![info exists hash_array(difference)]} { set hash_array(difference) 0 }
+    if {![info exists hash_array(dependency_status_id)] || "" == $hash_array(dependency_status_id) } { set hash_array(dependency_status_id) 9740 }
+    if {![info exists hash_array(dependency_type_id)] || "" == $hash_array(dependency_type_id) } { set hash_array(dependency_type_id) 9650 }
+    if {![info exists hash_array(difference)] || "" == $hash_array(difference) } { set hash_array(difference) 0 }
     if {![info exists hash_array(hardness_type_id)]} { set hash_array(hardness_type_id) "" }
 
     # write hash values as local variables
