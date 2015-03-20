@@ -66,7 +66,7 @@ ad_proc -private im_rest_post_object_type_im_project {
     if {![info exists hash_array(company_id)]} { set hash_array(company_id) [im_company_internal] }
     if {![info exists hash_array(parent_id)]} { set hash_array(parent_id) "" }
     if {![info exists hash_array(project_status_id)]} { set hash_array(project_status_id) [im_project_status_open] }
-    if {![info exists hash_array(project_type_id)]} { set hash_array(project_type_id) [im_project_type_consulting] }
+    if {![info exists hash_array(project_type_id)]} { set hash_array(project_type_id) [im_project_type_gantt] }
     if {![info exists hash_array(start_date)]} { set hash_array(start_date) [util_memoize [list db_string y "select to_char(now(), 'YYYY-01-01')"]] }
     if {![info exists hash_array(end_date)]} { set hash_array(end_date) [util_memoize [list db_string y "select to_char(now(), 'YYYY-12-31')"]] }
 
