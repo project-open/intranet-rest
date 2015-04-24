@@ -2060,9 +2060,6 @@ ad_proc -private im_rest_post_object_type_im_company_employee_rel {
 }
 
 
-
-
-
 # --------------------------------------------------------
 # im_sencha_preference
 #
@@ -2166,18 +2163,8 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
     }
    
     set hash_array(rest_oid) $rest_oid
-    set hash_array(rel_id) $rest_oid
     return [array get hash_array]
 }
-
-
-
-
-
-
-
-
-
 
 # --------------------------------------------------------
 # im_sencha_column_config
@@ -2282,7 +2269,6 @@ ad_proc -private im_rest_post_object_type_im_sencha_column_config {
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $column_config_status_id -type_id $column_config_type_id -action after_create
    
     set hash_array(rest_oid) $rest_oid
-    set hash_array(rel_id) $rest_oid
     return [array get hash_array]
 }
 
