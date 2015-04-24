@@ -1333,7 +1333,7 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_hour_interval" }
-    { -rest_otype_pretty "Timesheet Hour" }
+    { -rest_otype_pretty "Timesheet Interval" }
 } {
     Create a new Timesheet Hour line and return the item_id.
 } {
@@ -1548,6 +1548,7 @@ ad_proc -private im_rest_post_object_type_im_note {
     { -format "json" }
     { -rest_user_id 0 }
     { -rest_otype "" }
+    { -rest_otype_pretty "Note" }
     { -rest_oid "" }
     { -content "" }
     { -debug 0 }
@@ -1721,7 +1722,7 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
     { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_biz_object_member" }
-    { -rest_otype_pretty "Ticket-Ticket Relationship" }
+    { -rest_otype_pretty "Biz Object Relationship" }
 } {
     Create a new object and return the object_id.
 } {
@@ -2070,6 +2071,7 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
     { -format "json" }
     { -rest_user_id 0 }
     { -rest_otype "" }
+    { -rest_otype_pretty "Sencha Preference" }
     { -rest_oid "" }
     { -content "" }
     { -debug 0 }
@@ -2077,13 +2079,6 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
     Handler for POST calls on particular im_sencha_preference objects.
 } {
     ns_log Notice "im_rest_post_object_im_sencha_preference: rest_oid=$rest_oid"
-
-    # Permissions
-    set add_p [im_permission $rest_user_id "add_projects"]
-    if {!$add_p} {
-	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
-    }
-
     set creation_user $rest_user_id
     set creation_ip [ad_conn peeraddr]
 
@@ -2096,10 +2091,25 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
     if {![info exists hash_array(preference_type_id)] || "" == $hash_array(preference_type_id)} { set hash_array(preference_type_id) [im_sencha_preference_type_default] }
     if {![info exists hash_array(preference_object_id)] || "" == $hash_array(preference_object_id)} { set hash_array(preference_object_id) $rest_user_id }
 
+
+    # Permissions
+    # No permissions are necessary if the user changes preferences for preference_object_id = current_user_id
+    set preference_object_id $hash_array(preference_object_id)
+    if {$rest_user_id != $preference_object_id} {
+	set object_type [util_memoize [list db_string object_type "select object_type from acs_objects where object_id = $preference_object_id" -default ""]]
+	if {"" == $object_type} {
+	    return [im_rest_error -format $format -http_status 403 -message "Could not find preference_object_id=$preference_object_id."] 
+	}
+	set perm_cmd "${object_type}_permissions \$user_id \$object_id view_p read_p write_p admin_p"
+	eval $perm_cmd
+	if {!$write_p} {
+	    return [im_rest_error -format $format -http_status 403 -message "You don not have write permissions on object_id=$preference_object_id"] 
+	}
+    }
+
     # write hash values as local variables
     foreach key [array names hash_array] {
 	set value $hash_array($key)
-	ns_log Notice "im_rest_post_object_type_$rest_otype: key=$key, value=$value"
 	set $key $value
     }
 
@@ -2159,3 +2169,120 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
     set hash_array(rel_id) $rest_oid
     return [array get hash_array]
 }
+
+
+
+
+
+
+
+
+
+
+# --------------------------------------------------------
+# im_sencha_column_config
+#
+
+ad_proc -private im_rest_post_object_type_im_sencha_column_config {
+    { -format "json" }
+    { -rest_user_id 0 }
+    { -rest_otype "" }
+    { -rest_otype_pretty "Sencha Column Config" }
+    { -rest_oid "" }
+    { -content "" }
+    { -debug 0 }
+} {
+    Handler for POST calls on particular im_sencha_column_config objects.
+} {
+    ns_log Notice "im_rest_post_object_im_sencha_column_config: rest_oid=$rest_oid"
+    set creation_user $rest_user_id
+    set creation_ip [ad_conn peeraddr]
+
+    # Extract a key-value list of variables from JSON POST request
+    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
+    ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
+
+    # Default values for not required vars
+    if {![info exists hash_array(column_config_status_id)] || "" == $hash_array(column_config_status_id)} { set hash_array(column_config_status_id) [im_sencha_column_config_status_active] }
+    if {![info exists hash_array(column_config_type_id)] || "" == $hash_array(column_config_type_id)} { set hash_array(column_config_type_id) [im_sencha_column_config_type_default] }
+    if {![info exists hash_array(column_config_object_id)] || "" == $hash_array(column_config_object_id)} { set hash_array(column_config_object_id) $rest_user_id }
+
+
+    # Permissions
+    # No permissions are necessary if the user changes column_configs for column_config_object_id = current_user_id
+    set column_config_object_id $hash_array(column_config_object_id)
+    if {$rest_user_id != $column_config_object_id} {
+	set object_type [util_memoize [list db_string object_type "select object_type from acs_objects where object_id = $column_config_object_id" -default ""]]
+	if {"" == $object_type} {
+	    return [im_rest_error -format $format -http_status 403 -message "Could not find column_config_object_id=$column_config_object_id."] 
+	}
+	set perm_cmd "${object_type}_permissions \$user_id \$object_id view_p read_p write_p admin_p"
+	eval $perm_cmd
+	if {!$write_p} {
+	    return [im_rest_error -format $format -http_status 403 -message "You don not have write permissions on object_id=$column_config_object_id"] 
+	}
+    }
+
+    # write hash values as local variables
+    foreach key [array names hash_array] {
+	set value $hash_array($key)
+	set $key $value
+    }
+
+    # Check that all required variables are there
+    set required_vars {column_config_url column_config_name}
+    foreach var $required_vars {
+	if {![info exists $var]} { 
+	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
+	}
+    }
+
+    # Check for duplicate
+    set dup_sql "
+	select	column_config_id
+	from	im_sencha_column_configs
+	where	column_config_object_id = :column_config_object_id and
+		column_config_url = :column_config_url and
+		column_config_name = :column_config_name
+    "
+    set rest_oid [db_string duplicates $dup_sql -default 0]
+    if {0 == $rest_oid} {
+	# Create a new column_config
+	if {[catch {
+	    set rest_oid [db_string new_im_sencha_column_config "
+		select im_sencha_column_config__new (
+			null,			-- column_config_id
+			:rest_otype,		-- object_type
+			now(),			-- creation_date
+			:creation_user,
+			:creation_ip,
+			null,			-- context_id
+
+			:column_config_type_id,
+			:column_config_status_id,
+			:column_config_object_id,
+			:column_config_url,
+			:column_config_name
+		)
+	    "]
+	} err_msg]} {
+	    return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
+	}
+    }
+
+    if {[catch {
+	im_rest_object_type_update_sql \
+	    -rest_otype $rest_otype \
+	    -rest_oid $rest_oid \
+	    -hash_array [array get hash_array]
+    } err_msg]} {
+	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
+    }
+
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $column_config_status_id -type_id $column_config_type_id -action after_create
+   
+    set hash_array(rest_oid) $rest_oid
+    set hash_array(rel_id) $rest_oid
+    return [array get hash_array]
+}
+
