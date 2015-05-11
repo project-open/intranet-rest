@@ -125,7 +125,7 @@ template::multirow foreach task_multirow {
 	for {set i 0} {$i < $old_level} {incr i} { append indent "\t" }
     }
 
-    set project_name "$sort_order - $project_name"
+    set project_name "$project_name"
 
     # The current task is on the same level as the previous.
     # This is also executed after reducing the old_level in the previous while loop
