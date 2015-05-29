@@ -125,6 +125,7 @@ ad_proc -private im_rest_post_object {
     }
 
     # Check if there is an object type specific permission checker
+    set write_p 0
     if {0 != [llength [info commands ${rest_otype}_permissions]]} {
 	catch {
 	    eval "${rest_otype}_permissions $rest_user_id $rest_oid view_p read_p write_p admin_p"
@@ -377,18 +378,21 @@ ad_proc -private im_rest_delete_object {
     Handler for DELETE rest calls to an individual object:
     Update the specific object using a generic update procedure
 } {
-    ns_log Notice "im_rest_delete_object: rest_otype=$rest_otype, rest_oid=$rest_oid, rest_user_id=$rest_user_id, format='$format', query_hash=$query_hash_pairs"
-
-    # Get the content of the HTTP DELETE request
     set content [im_rest_get_content]
-    ns_log Notice "im_rest_delete_object: content=$content"
+    ns_log Notice "im_rest_delete_object: rest_otype=$rest_otype, rest_oid=$rest_oid, rest_user_id=$rest_user_id, format='$format', query_hash=$query_hash_pairs, content=$content"
 
-    # Only administrators have the right to DELETE
-    if {![im_user_is_admin_p $rest_user_id]} {
-	im_rest_error -format $format -http_status 401 -message "User #$rest_user_id is not a system administrator. You need admin rights for DELETE."
+    # Deletion requires administrator rights or admin_p permissions
+    set admin_p [im_user_is_admin_p $rest_user_id]
+    if {!$admin_p && 0 != [llength [info commands ${rest_otype}_permissions]]} {
+	catch {
+	    eval "${rest_otype}_permissions $rest_user_id $rest_oid view_p read_p admin_p admin_p"
+	}
+    }
+    if {!$admin_p} {
+	im_rest_error -format $format -http_status 403 -message "User #$rest_user_id has no 'admin' permission to perform DELETE on object #$rest_oid"
 	return
     }
-
+    
     # Deal with certain subtypes
     switch $rest_otype {
 	im_ticket {
@@ -402,10 +406,10 @@ ad_proc -private im_rest_delete_object {
 
     # Destroy the object. Try first with an object_type_nuke TCL procedure.
     set destroyed_err_msg ""
+    if {[catch {
 	set nuke_tcl [list "${nuke_otype}_nuke" -current_user_id $rest_user_id $rest_oid]
 	ns_log Notice "im_rest_delete_object: nuke_tcl=$nuke_tcl"
-	eval $nuke_tcl
-    if {[catch {
+    eval $nuke_tcl
     } err_msg]} {
 	ns_log Notice "im_rest_delete_object: Error nuking object $rest_oid using TCL code: $err_msg"
 	set destroyed_p 0
