@@ -88,6 +88,7 @@ ad_proc -private im_rest_post_object_type {
     } else {
 	ns_log Notice "im_rest_post_object_type: Create for '$rest_otype' not implemented yet"
 	im_rest_error -format $format -http_status 404 -message "Object creation for object type '$rest_otype' not implemented yet."
+	return
     }
     return
 }
@@ -117,8 +118,11 @@ ad_proc -private im_rest_post_object {
 
     # Permissions for the object type
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = '$rest_otype'" -default 0]]
-    set write_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
-    if {!$write_p} { return }
+    set read_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
+    if {!$read_p} {
+	im_rest_error -format $format -http_status 403 -message "User #$rest_user_id has no read permission on object #$rest_otype_id (im_hour_interval object type)"
+	return
+    }
 
     # Check if there is an object type specific permission checker
     if {0 != [llength [info commands ${rest_otype}_permissions]]} {
@@ -126,7 +130,10 @@ ad_proc -private im_rest_post_object {
 	    eval "${rest_otype}_permissions $rest_user_id $rest_oid view_p read_p write_p admin_p"
 	}
     }
-    if {!$write_p} { return }
+    if {!$write_p} {
+	im_rest_error -format $format -http_status 403 -message "User #$rest_user_id has no write permission on object #$rest_oid"
+	return
+    }
 
     # Check if there is a customized version of this post handler
     if {0 != [llength [info commands im_rest_post_object_$rest_otype]]} {
@@ -379,6 +386,7 @@ ad_proc -private im_rest_delete_object {
     # Only administrators have the right to DELETE
     if {![im_user_is_admin_p $rest_user_id]} {
 	im_rest_error -format $format -http_status 401 -message "User #$rest_user_id is not a system administrator. You need admin rights for DELETE."
+	return
     }
 
     # Deal with certain subtypes
