@@ -19,6 +19,8 @@ if {![regexp {^http://www\.project-open\.[a-z]+} $url match]} {
     ad_script_abort
 }
 
+ns_log Notice "/intranet-rest/data-source/domain-proxy.tcl: url=$url"
+
 
 # --------------------------------------------
 # Fetch and return the page
