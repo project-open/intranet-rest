@@ -197,9 +197,7 @@ ad_proc -private im_rest_authenticate {
 	}
     }
 
-    if {"" == $auth_user_id} { set auth_user_id 0 }
     ns_log Notice "im_rest_authenticate: format=$format, auth_method=$auth_method, auth_user_id=$auth_user_id"
-
     return [list user_id $auth_user_id method $auth_method]
 }
 
@@ -242,7 +240,7 @@ ad_proc -private im_rest_call_get {
     if {0 == [llength [array get auth_hash]]} { return [im_rest_error -format $format -http_status 401 -message "Not authenticated"] }
     set auth_user_id $auth_hash(user_id)
     set auth_method $auth_hash(method)
-    if {0 == $auth_user_id} { return [im_rest_error -format $format -http_status 401 -message "Not authenticated"] }
+    if {"" == $auth_user_id} { return [im_rest_error -format $format -http_status 401 -message "Not authenticated"] }
 
     # Default format are:
     # - "html" for cookie authentication
