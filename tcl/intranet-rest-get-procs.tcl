@@ -214,8 +214,8 @@ ad_proc -private im_rest_get_object_type {
     # Loop through all objects of the specified type
     set obj_ctr 0
     set result ""
+    set user_id $rest_user_id
     db_foreach objects $sql {
-
 	# Skip objects with empty object name
 	if {"" == $object_name} { 
 	    ns_log Error "im_rest_get_object_type: Skipping object #$object_id because object_name is empty."
