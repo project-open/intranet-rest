@@ -316,11 +316,8 @@ ad_proc -public im_rest_object_type_select_sql {
 	set table_name [lindex $table_tuple 0]
 	set id_column [lindex $table_tuple 1]
 
-	# Make sure not to include a table twice!
-	if {[lsearch $selected_tables $table_name] >= 0} { 
-	    ns_log Notice "im_rest_object_type_select_sql: found duplicate table: $table_name"
-	    continue 
-	}
+	# Make sure not to include a table twice! There are duplicates in the query.
+	if {[lsearch $selected_tables $table_name] >= 0} { continue }
 
 	# Define an abbreviation for each table
 	set letter [lindex $letters $cnt]
