@@ -21,6 +21,8 @@ if {!$read} {
     ad_script_abort
 }
 
+
+# --------------------------------------------
 # Task dependencies: Collect before the main loop
 # predecessor_hash: The list of predecessors for each task
 # successor_task_hash: The list of successors for each task
@@ -45,6 +47,35 @@ db_foreach task_dependencies $task_dependencies_sql {
     set successor_hash($task_id_two) $successor_tasks
 }
 
+# --------------------------------------------
+# Assignees: Collect before the main loop
+#
+set assignee_sql "
+	select	r.*,
+		bom.*,
+		to_char(coalesce(bom.percentage,0), '990.0') as percent_pretty,
+		im_name_from_user_id(r.object_id_two) as user_name,
+		im_email_from_user_id(r.object_id_two) as user_email,
+		im_initials_from_user_id(r.object_id_two) as user_initials
+	from	im_projects main_p,
+		im_projects p,
+		acs_rels r,
+		im_biz_object_members bom 
+	where	r.rel_id = bom.rel_id and
+		r.object_id_one = p.project_id and
+		main_p.project_id = :project_id and
+		p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey)
+"
+db_foreach assignee $assignee_sql {
+    set assignees [list]
+    if {[info exists assignee_hash($object_id_one)]} { set assignees $assignee_hash($object_id_one) }
+    lappend assignees "{id:$object_id_two, percent:$percent_pretty, name:'$user_name', email:'$user_email', initials:'$user_initials'}"
+    set assignee_hash($object_id_one) $assignees
+}
+
+# ad_return_complaint 1 [join [array get assignee_hash] "<br>"]
+
+# --------------------------------------------
 # Get all the variables valid for timesheet task
 set valid_vars [util_memoize [list im_rest_object_type_columns -deref_p 0 -rest_otype "im_timesheet_task"]]
 set valid_vars [lsort -unique $valid_vars]
@@ -144,15 +175,18 @@ template::multirow foreach task_multirow {
 
     set successor_tasks [list]
     set predecessor_tasks [list]
+    set assignees [list]
     if {[info exists successor_hash($project_id)]} { set successor_tasks $successor_hash($project_id) }
     if {[info exists predecessor_hash($project_id)]} { set predecessor_tasks $predecessor_hash($project_id) }
+    if {[info exists assignee_hash($project_id)]} { set assignees $assignee_hash($project_id) }
 
     append task_json "${indent}\{
 ${indent}\tid:$project_id,
 ${indent}\ttext:'$project_name',
 ${indent}\tduration:13.5,
-${indent}\tsuccessors:\[[join $successor_tasks ","]\],
-${indent}\tpredecessors:\[[join $predecessor_tasks ","]\],
+${indent}\tsuccessors:\[[join $successor_tasks ", "]\],
+${indent}\tpredecessors:\[[join $predecessor_tasks ", "]\],
+${indent}\tassignees:\[[join $assignees ", "]\],
 ${indent}\tuser:'$assignee',
 ${indent}\ticonCls:'task-folder',
 ${indent}\texpanded:$expanded,
