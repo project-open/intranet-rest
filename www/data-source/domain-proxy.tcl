@@ -3,7 +3,7 @@
 # Copyright (C) 2015 ]project-open[
 
 ad_page_contract {
-    Fetches a page from www.project-open.org
+    Fetches a page from www.project-open.net
     @param project_id The project
     @author frank.bergmann@project-open.com
 } {

@@ -16,7 +16,7 @@ ad_library {
 
 ad_proc -private im_rest_version {} {
     Returns the current server version of the REST interface.
-    Please see www.project-open.org/en/rest_version_history
+    Please see www.project-open.com/en/rest-version-history
     <li>3.0	(2014-09-11):	Removed XML support, changed single object GET,
     				test based dev, rewrite of read/list
     <li>2.2	(2013-10-18):	Added "deref_p=1" parameter for dereferencing

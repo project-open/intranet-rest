@@ -239,7 +239,7 @@ switch $format {
 	
 	
 	array set wiki_hash {
-		object_typ_im_indicator 1
+		object_type_im_indicator 1
 		object_type_acs_attribute 1
 		object_type_acs_object 1
 		object_type_acs_object_type 1
@@ -412,7 +412,8 @@ switch $format {
 	
 	    set wiki_key "object_type_$object_type"
 	    set wiki "Wiki"
-	    set object_wiki_url "http://www.project-open.org/en/object_type_$object_type"
+	    regsub -all {_} $object_type {-} object_type_dashes
+	    set object_wiki_url "http://www.project-open.com/en/object-type-$object_type_dashes"
 	    if {![info exists wiki_hash($wiki_key)]} {
 		set wiki ""
 		set object_wiki_url ""
