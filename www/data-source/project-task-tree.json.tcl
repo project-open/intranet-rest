@@ -65,6 +65,8 @@ set assignee_sql "
 		r.object_id_one = p.project_id and
 		main_p.project_id = :project_id and
 		p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey)
+	order by
+		user_initials
 "
 db_foreach assignee $assignee_sql {
     set assignees [list]
