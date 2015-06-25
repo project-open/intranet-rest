@@ -71,7 +71,7 @@ set assignee_sql "
 db_foreach assignee $assignee_sql {
     set assignees [list]
     if {[info exists assignee_hash($object_id_one)]} { set assignees $assignee_hash($object_id_one) }
-    lappend assignees "{id:$object_id_two, percent:$percent_pretty, name:'$user_name', email:'$user_email', initials:'$user_initials'}"
+    lappend assignees "{id:$rel_id, user_id:$object_id_two, percent:$percent_pretty}"
     set assignee_hash($object_id_one) $assignees
 }
 
