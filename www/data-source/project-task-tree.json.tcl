@@ -75,7 +75,34 @@ db_foreach assignee $assignee_sql {
     set assignee_hash($object_id_one) $assignees
 }
 
-# ad_return_complaint 1 [join [array get assignee_hash] "<br>"]
+# --------------------------------------------
+# Get the list of projects that should not be displayed
+#
+set non_display_projects_sql "
+	select	distinct sub_p.project_id			-- Select all sup-projects of somehow non-displays
+	from	im_projects super_p,
+		im_projects sub_p
+	where	sub_p.tree_sortkey between super_p.tree_sortkey and tree_right(super_p.tree_sortkey) and
+		sub_p.project_id != :project_id and
+		super_p.project_id in (
+			-- The list of projects that should not be displayed
+			select	p.project_id
+			from	im_projects p,
+				acs_objects o,
+				im_projects main_p
+			where	main_p.project_id = :project_id and
+				main_p.project_id != p.project_id and
+				p.project_id = o.object_id and
+				p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey) and
+				o.object_type = 'im_project'
+		)
+"
+# set non_display_projects [db_list non_display_projects $non_display_projects_sql]
+set non_display_projects [list]
+lappend non_display_projects 0
+
+# ad_return_complaint 1 $non_display_projects
+
 
 # --------------------------------------------
 # Get all the variables valid for timesheet task
@@ -106,7 +133,8 @@ set projects_sql "
 			bts.user_id = :current_user_id
 		)
 	where	main_p.project_id = :project_id and
-		p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey)
+		p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey) and
+		p.project_id not in ([join $non_display_projects ","])
 	order by
 		coalesce(p.sort_order, 0)
 "
@@ -114,22 +142,16 @@ set projects_sql "
 # Read the query into a Multirow, so that we can order
 # it according to sort_order within the individual sub-levels.
 db_multirow task_multirow task_list $projects_sql {
-
     # By default keep the main project "open".
     if {"" == $parent_id} { set expanded "true" }
-
 }
 
 # Sort the tree according to the specified sort order
 # "sort_order" is an integer, so we have to tell the sort algorithm to use integer sorting
 ns_log Notice "project-tree.json.tcl: starting to sort multirow"
-
 multirow_sort_tree -integer task_multirow project_id parent_id sort_order
 
-
-
 set title ""
-
 set task_json ""
 set ctr 0
 set old_level 1
@@ -203,9 +225,7 @@ ${indent}\texpanded:$expanded,
 	set mapped_value [string map {"\n" "<br>" "\r" ""} $value]
 	append task_json "${indent}\t$var:'$mapped_value',\n"
     }
-
     append task_json "${indent}\tleaf:$leaf_json"
-
 
     incr ctr
     set old_level $level
@@ -220,8 +240,6 @@ while {$level < $old_level} {
     set indent ""
     for {set i 0} {$i < $old_level} {incr i} { append indent "\t" }
 }
-
-
 
 doc_return 200 "text/plain" "{'text':'.','children': \[
 $task_json
