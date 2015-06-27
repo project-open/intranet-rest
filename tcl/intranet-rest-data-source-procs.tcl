@@ -73,8 +73,8 @@ ad_proc im_rest_project_task_tree_update {
 	-rest_oid $project_id \
 	-hash_array $var_hash_list
 
-    # Update assignments
-    im_rest_project_task_tree_assignments -project_id $project_id -var_hash_list $var_hash_list
+    # Update assignees
+    im_rest_project_task_tree_assignees -project_id $project_id -var_hash_list $var_hash_list
 }
 
 
@@ -149,27 +149,27 @@ ad_proc im_rest_project_task_tree_create {
 			-rest_otype_pretty "Timesheet Task" \
 			-hash_array_list $var_hash_list]
 
-    # Update assignments
-    im_rest_project_task_tree_assignments -project_id $project_id -var_hash_list $var_hash_list
+    # Update assignees
+    im_rest_project_task_tree_assignees -project_id $project_id -var_hash_list $var_hash_list
 }
 
 
-ad_proc im_rest_project_task_tree_assignments {
+ad_proc im_rest_project_task_tree_assignees {
     -project_id:required
     -var_hash_list:required
 } {
-    Update the resource assignments to the task
+    Update the resource assignees to the task
 } {
-    ns_log Notice "im_rest_project_task_tree_assignments: project_id=$project_id, var_hash_list=$var_hash_list"
+    ns_log Notice "im_rest_project_task_tree_assignees: project_id=$project_id, var_hash_list=$var_hash_list"
     array set var_hash $var_hash_list
    
-    # Update task assignments
+    # Update task assignees
     set assignees $var_hash(assignees)
-    ns_log Notice "im_rest_project_task_tree_assignments: assignees=$assignees"
+    ns_log Notice "im_rest_project_task_tree_assignees: assignees=$assignees"
     set assignee_list [lindex $assignees 1]
     foreach assignee_object $assignee_list {
 	set object_hash_list [lindex $assignee_object 1]
-	ns_log Notice "im_rest_project_task_tree_assignments: object_hash=$object_hash_list"
+	ns_log Notice "im_rest_project_task_tree_assignees: object_hash=$object_hash_list"
 	array unset object_hash
 	array set object_hash $object_hash_list
 	set user_id $object_hash(user_id)
@@ -178,7 +178,7 @@ ad_proc im_rest_project_task_tree_assignments {
 	# Add the dude to the project and update percentage
 	set rel_id [im_biz_object_add_role $user_id $project_id [im_biz_object_role_full_member]]
 	db_dml update_assignation "update im_biz_object_members set percentage = :percent where rel_id = :rel_id"
-	ns_log Notice "im_rest_project_task_tree_assignments: rel_id=$rel_id"
+	ns_log Notice "im_rest_project_task_tree_assignees: rel_id=$rel_id"
     }
 }
 
