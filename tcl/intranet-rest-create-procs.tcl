@@ -276,6 +276,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     { -format "json" }
     { -rest_user_id 0 }
     { -content "" }
+    { -hash_array_list ""}
     { -rest_otype "im_timesheet_task" }
     { -rest_otype_pretty "Timesheet Task" }
 } {
@@ -293,15 +294,20 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     set planned_units ""
     set billable_units ""
     set cost_center_id ""
+    set material_id ""
     set invoice_id ""
     set priority ""
     set sort_order ""
     set gantt_project_id ""
     set note ""
-
+   
     # Extract a key-value list of variables from JSON POST request
-    array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
-
+    if {"" != $hash_array_list} {
+	array set hash_array $hash_array_list
+    } else {
+	array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
+    }
+   
     # write hash values as local variables
     foreach key [array names hash_array] {
 	set value $hash_array($key)
@@ -309,6 +315,16 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 	set $key $value
     }
 
+    # Create default values if not yet set
+    if {"" == $material_id} {
+	set material_id [im_material_default_material_id]
+	set hash_array(material_id) $material_id
+    }
+    if {"" == $uom_id} {
+	set uom_id 320
+	set hash_array(uom_id) $uom_id
+    }
+    
     # Check that all required variables are there
     set required_vars {project_name project_nr parent_id project_status_id project_type_id uom_id material_id}
     foreach var $required_vars {

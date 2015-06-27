@@ -11,6 +11,9 @@ ad_page_contract {
     {debug_p 0}
 }
 
+
+ns_log Notice "project-task-tree.json: query_hash_pairs=$query_hash_pairs"
+
 # --------------------------------------------
 # Security & Permissions
 #
