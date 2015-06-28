@@ -26,6 +26,11 @@ ad_proc im_rest_project_task_tree_action {
     set current_user_id [ad_get_user_id]
     array set var_hash $var_hash_list
 
+    # Ignore the root of the tree that might be send by the Sencha side
+    set id ""
+    if {[info exists var_hash(id)]} { set id $var_hash(id) }
+    if {"root" == $id} { return; }
+
     # Get the project/task_id
     set project_id ""
     if {[info exists var_hash(project_id)] && "" != $var_hash(project_id)} { set project_id $var_hash(project_id) }
