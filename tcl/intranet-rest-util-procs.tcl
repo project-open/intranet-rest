@@ -412,7 +412,7 @@ ad_proc -public im_rest_object_type_columns {
 			where	object_type in ('[join $super_types "', '"]')
 		)) and
 		-- avoid returning 'format' because format=json is part of every query
-		lower(utc.column_name) not in ('format')
+		lower(utc.column_name) not in ('format', 'rule_engine_old_value')
     "
 
     set columns [list]
