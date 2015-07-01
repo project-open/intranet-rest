@@ -28,27 +28,24 @@ if {!$read} {
 # --------------------------------------------
 # Task dependencies: Collect before the main loop
 # predecessor_hash: The list of predecessors for each task
-# successor_task_hash: The list of successors for each task
 set task_dependencies_sql "
 	select	distinct ttd.*
 	from	im_projects main_p,
 		im_projects p,
 		im_timesheet_task_dependencies ttd
-	where	main_p.project_id = :project_id and
-		p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey) and
-		(ttd.task_id_one = p.project_id OR ttd.task_id_two = p.project_id)
+	where	p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey) and
+		(ttd.task_id_one = p.project_id OR ttd.task_id_two = p.project_id) and
+		main_p.project_id = :project_id
 "
 db_foreach task_dependencies $task_dependencies_sql {
-    set predecessor_tasks [list]
-    if {[info exists predecessor_hash($task_id_one)]} { set predecessor_tasks $predecessor_hash($task_id_one) }
-    lappend predecessor_tasks $task_id_two
-    set predecessor_hash($task_id_one) $predecessor_tasks
-
-    set successor_tasks [list]
-    if {[info exists successor_hash($task_id_two)]} { set successor_tasks $successor_hash($task_id_two) }
-    lappend successor_tasks $task_id_one
-    set successor_hash($task_id_two) $successor_tasks
+    set pred [list]
+    if {[info exists predecessor_hash($task_id_one)]} { set pred $predecessor_hash($task_id_one) }
+    lappend pred "{id: $dependency_id, pred_id: $task_id_two, succ_id: $task_id_one, type_id: $dependency_type_id, diff: $difference}"
+    set predecessor_hash($task_id_one) $pred
 }
+
+# ad_return_complaint 1 "<pre>[join [array get predecessor_hash] "<br>"]</pre>
+
 
 # --------------------------------------------
 # Assignees: Collect before the main loop
@@ -200,10 +197,8 @@ template::multirow foreach task_multirow {
     
     if {0 == $num_children} { set leaf_json "true" } else { set leaf_json "false" }
 
-    set successor_tasks [list]
     set predecessor_tasks [list]
     set assignees [list]
-    if {[info exists successor_hash($project_id)]} { set successor_tasks $successor_hash($project_id) }
     if {[info exists predecessor_hash($project_id)]} { set predecessor_tasks $predecessor_hash($project_id) }
     if {[info exists assignee_hash($project_id)]} { set assignees $assignee_hash($project_id) }
 
@@ -211,7 +206,6 @@ template::multirow foreach task_multirow {
 ${indent}\tid:$project_id,
 ${indent}\ttext:'$project_name',
 ${indent}\tduration:13.5,
-${indent}\tsuccessors:\[[join $successor_tasks ", "]\],
 ${indent}\tpredecessors:\[[join $predecessor_tasks ", "]\],
 ${indent}\tassignees:\[[join $assignees ", "]\],
 ${indent}\tuser:'$assignee',
