@@ -118,7 +118,6 @@ set projects_sql "
 		p.*,					-- p.* needs to come after gp.* in case gp is NULL
 		tree_level(p.tree_sortkey) as level,
 		(p.end_date - p.start_date)::interval as duration,
-		(select im_name_from_user_id(min(r.object_id_two)) from acs_rels r where r.object_id_one = p.project_id) as assignee,
 		(select count(*) from im_projects child where child.parent_id = p.project_id) as num_children,
 		CASE WHEN bts.open_p = 'o' THEN 'true' ELSE 'false' END as expanded,
 		p.sort_order
@@ -181,8 +180,6 @@ template::multirow foreach task_multirow {
 	for {set i 0} {$i < $old_level} {incr i} { append indent "\t" }
     }
 
-    set project_name "$project_name"
-
     # The current task is on the same level as the previous.
     # This is also executed after reducing the old_level in the previous while loop
     if {$level == $old_level} {
@@ -203,25 +200,26 @@ template::multirow foreach task_multirow {
     if {[info exists predecessor_hash($project_id)]} { set predecessor_tasks $predecessor_hash($project_id) }
     if {[info exists assignee_hash($project_id)]} { set assignees $assignee_hash($project_id) }
 
+    set quoted_char_map {"\n" "\\\n" "\r" "" "\"" "\\\"" "\\" "\\\\"}
+    set quoted_project_name [string map $quoted_char_map $project_name]
+    
     append task_json "${indent}\{
 ${indent}\tid:$project_id,
-${indent}\ttext:'$project_name',
+${indent}\ttext:\"$quoted_project_name\",
 ${indent}\tduration:13.5,
 ${indent}\tpredecessors:\[[join $predecessor_tasks ", "]\],
 ${indent}\tassignees:\[[join $assignees ", "]\],
-${indent}\tuser:'$assignee',
-${indent}\ticonCls:'task-folder',
+${indent}\ticonCls:\"task-folder\",
 ${indent}\texpanded:$expanded,
 "
-
     foreach var $valid_vars {
 	# Skip xml_* variables (only used by MS-Project)
 	if {[regexp {^xml_} $var match]} { continue }
 
 	# Append the value to the JSON output
 	set value [set $var]
-	set mapped_value [string map {"\n" "<br>" "\r" ""} $value]
-	append task_json "${indent}\t$var:'$mapped_value',\n"
+	set quoted_value [string map $quoted_char_map $value]
+	append task_json "${indent}\t$var:\"$quoted_value\",\n"
     }
     append task_json "${indent}\tleaf:$leaf_json"
 
