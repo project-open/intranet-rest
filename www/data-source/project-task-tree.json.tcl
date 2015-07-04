@@ -29,7 +29,8 @@ if {!$read} {
 # Task dependencies: Collect before the main loop
 # predecessor_hash: The list of predecessors for each task
 set task_dependencies_sql "
-	select	distinct ttd.*
+	select	distinct ttd.*,
+		coalesce(ttd.difference, 0.0) as diff
 	from	im_projects main_p,
 		im_projects p,
 		im_timesheet_task_dependencies ttd
@@ -40,7 +41,7 @@ set task_dependencies_sql "
 db_foreach task_dependencies $task_dependencies_sql {
     set pred [list]
     if {[info exists predecessor_hash($task_id_one)]} { set pred $predecessor_hash($task_id_one) }
-    lappend pred "{id: $dependency_id, pred_id: $task_id_two, succ_id: $task_id_one, type_id: $dependency_type_id, diff: $difference}"
+    lappend pred "{id: $dependency_id, pred_id: $task_id_two, succ_id: $task_id_one, type_id: $dependency_type_id, diff: $diff}"
     set predecessor_hash($task_id_one) $pred
 }
 
