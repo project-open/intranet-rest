@@ -238,9 +238,3 @@ while {$level < $old_level} {
     for {set i 0} {$i < $old_level} {incr i} { append indent "\t" }
 }
 
-doc_return 200 "text/plain" "{'text':'.','children': \[
-$task_json
-}
-"
-
-ad_script_abort

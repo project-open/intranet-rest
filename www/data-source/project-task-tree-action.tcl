@@ -50,8 +50,3 @@ if {[info exists json_hash(_array_)]} {
     }
 }
 
-# ---------------------------------------------------------------
-# Return a success JSON
-# ---------------------------------------------------------------
-
-doc_return 200 "text/plain" "\{success:true, message: 'Successfully performed action=$action'\}"

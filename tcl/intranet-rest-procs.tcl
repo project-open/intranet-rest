@@ -315,6 +315,8 @@ ad_proc -private im_rest_page {
     }
 
     set result [ad_parse_template -params $params $file]
+    # set result "{success:false, message: 'ad_parse_template -params $params $file'}"
+    
     switch $format {
 	json { set mime_type "application/json" }
 	default { set mime_type "text/html" }

@@ -25,14 +25,8 @@ ns_log Notice "/intranet-rest/data-source/domain-proxy.tcl: url=$url"
 # --------------------------------------------
 # Fetch and return the page
 #
-
 if {[catch {
     set json [ns_httpget $url]
 } err_msg]} {
-    ad_return_complaint 1 "Domain-proxy: Error retreiving url:<br><pre>[ns_quotehtml $err_msg]</pre>"
-    ad_script_abort    
+    set json "{'success': false, 'message': 'Error message: $err_msg'}"
 }
-
-
-
-doc_return 200 "application/json" $json
