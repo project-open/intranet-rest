@@ -200,7 +200,7 @@ template::multirow foreach task_multirow {
     if {[info exists predecessor_hash($project_id)]} { set predecessor_tasks $predecessor_hash($project_id) }
     if {[info exists assignee_hash($project_id)]} { set assignees $assignee_hash($project_id) }
 
-    set quoted_char_map {"\n" "\\\n" "\r" "" "\"" "\\\"" "\\" "\\\\"}
+    set quoted_char_map {"\n" "\\n" "\r" "\\r" "\"" "\\\"" "\\" "\\\\"}
     set quoted_project_name [string map $quoted_char_map $project_name]
     
     append task_json "${indent}\{

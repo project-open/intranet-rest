@@ -1,3 +1,3 @@
 {'text':'.','children': [
-@task_json@
+@task_json;noquote@
 }
