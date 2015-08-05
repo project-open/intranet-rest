@@ -144,6 +144,10 @@ set projects_sql "
 db_multirow task_multirow task_list $projects_sql {
     # By default keep the main project "open".
     if {"" == $parent_id} { set expanded "true" }
+
+    # Deal with partial data if exactly one of the two start or end dates are set
+    if {"" == $start_date && "" != $end_date} { set start_date $end_date }
+    if {"" != $start_date && "" == $end_date} {	set end_date $start_date }
 }
 
 # Sort the tree according to the specified sort order
