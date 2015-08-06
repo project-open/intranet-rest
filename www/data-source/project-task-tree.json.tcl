@@ -206,6 +206,8 @@ template::multirow foreach task_multirow {
 
     set quoted_char_map {"\n" "\\n" "\r" "\\r" "\"" "\\\"" "\\" "\\\\"}
     set quoted_project_name [string map $quoted_char_map $project_name]
+
+# ${indent}\ticonCls:\"task-folder\",
     
     append task_json "${indent}\{
 ${indent}\tid:$project_id,
@@ -213,7 +215,6 @@ ${indent}\ttext:\"$quoted_project_name\",
 ${indent}\tduration:13.5,
 ${indent}\tpredecessors:\[[join $predecessor_tasks ", "]\],
 ${indent}\tassignees:\[[join $assignees ", "]\],
-${indent}\ticonCls:\"task-folder\",
 ${indent}\texpanded:$expanded,
 "
     foreach var $valid_vars {
