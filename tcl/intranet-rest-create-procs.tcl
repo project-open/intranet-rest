@@ -291,8 +291,12 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     }
     
     # Store the values into local variables
+    set project_nr ""
+    set project_status_id [im_project_status_open]
+    set project_type_id [im_project_type_task]
     set planned_units ""
     set billable_units ""
+    set percent_completed 0
     set cost_center_id ""
     set material_id ""
     set invoice_id ""
@@ -324,7 +328,15 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 	set uom_id 320
 	set hash_array(uom_id) $uom_id
     }
-    
+    if {"" == $project_nr} {
+	set nr_prefix "task_"
+        set nr_digits 4
+	set project_nr [db_string oid "select nextval('t_acs_object_id_seq') + 1"]
+	while {[string length $project_nr] < $nr_digits} { set project_nr "0$project_nr" }
+        set project_nr "$nr_prefix$project_nr"
+	set hash_array(project_nr) $project_nr
+    }
+
     # Check that all required variables are there
     set required_vars {project_name project_nr parent_id project_status_id project_type_id uom_id material_id}
     foreach var $required_vars {
@@ -337,6 +349,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     if {"" == $parent_id} {
 	return [im_rest_error -format $format -http_status 406 -message "Variable 'parent_id' is not a valid project_id."]
     }
+
     # Check if the user has write permissions on the parent_id project
     im_project_permissions $rest_user_id $parent_id view_p read_p write_p admin_p
     if {!$write_p} {
@@ -354,7 +367,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 			 upper(trim(p.project_nr)) = upper(trim(:project_nr)))
     "
     if {[db_string duplicates $dup_sql]} {
-	return [im_rest_error -format $format -http_status 406 -message "Duplicate $rest_otype_pretty: Your project_name or project_nr already exists."]
+	return [im_rest_error -format $format -http_status 406 -message "Duplicate $rest_otype_pretty: Your project_name='$project_name' or project_nr='$project_nr' already exists below parent_id=$parent_id."]
     }
 
     if {[catch {
@@ -1772,7 +1785,7 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
     set required_vars {object_id_one object_id_two}
     foreach var $required_vars {
 	if {![info exists $var]} { 
-		ns_log Notice "im_rest_post_object_type_$rest_otype: Variable '$var' not specified. The following variables are required: $required_vars"	
+	    ns_log Notice "im_rest_post_object_type_$rest_otype: Variable '$var' not specified. The following variables are required: $required_vars"	
 	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
 	}
     }
@@ -1793,11 +1806,11 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
     set rest_oid [db_string duplicates $dup_sql -default ""]
 
     if {"" == $rest_oid} {
-		# Add the new relationship only if it doesn't exist yet
-		# Gracefully handle duplicates
-		if {[catch {
-			ns_log Notice "im_rest_post_object_type_$rest_otype: Now calling im_biz_object_member__new ..."
-			set rest_oid [db_string new_im_biz_object_member "
+	# Add the new relationship only if it doesn't exist yet
+	# Gracefully handle duplicates
+	if {[catch {
+	    ns_log Notice "im_rest_post_object_type_$rest_otype: Now calling im_biz_object_member__new ..."
+	    set rest_oid [db_string new_im_biz_object_member "
 				select im_biz_object_member__new (
 					null,			-- rel_id
 					:rest_otype,		-- rel_type
@@ -1808,16 +1821,16 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
 					:rest_user_id,		-- Creation user
 					'[ns_conn peeraddr]'	-- Connection IP address for audit
 				)
-	    	"]
-		} err_msg]} {
-			ns_log Notice "im_rest_post_object_type_$rest_otype: Error creating $rest_otype_pretty: '$err_msg'."
-			return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
-		}
-   
-		im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
-    } else {
-		ns_log Notice "im_rest_post_object_type_$rest_otype: im_biz_object_member__new skipped, found rest_oid: $rest_oid"
+	    "]
+	} err_msg]} {
+	    ns_log Notice "im_rest_post_object_type_$rest_otype: Error creating $rest_otype_pretty: '$err_msg'."
+	    return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
 	}
+   
+	im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
+    } else {
+	ns_log Notice "im_rest_post_object_type_$rest_otype: im_biz_object_member__new skipped, found rest_oid: $rest_oid"
+    }
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid

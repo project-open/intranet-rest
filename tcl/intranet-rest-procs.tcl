@@ -299,7 +299,7 @@ ad_proc -private im_rest_page {
 } {
     The user has requested /intranet-rest/index or /intranet-rest/data-source/*
 } {
-    ns_log Notice "im_rest_index_page: rest_otype=$rest_otype, query_hash=$query_hash_pairs"
+    ns_log Notice "im_rest_page: rest_otype=$rest_otype, rest_oid=$rest_oid, query_hash=$query_hash_pairs"
 
     set params [list \
 		    [list rest_otype $rest_otype] \

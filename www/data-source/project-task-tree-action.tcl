@@ -2,14 +2,16 @@
 #
 # Copyright (C) 2013 ]project-open[
 
-ad_page_contract {
-    Recieves a POST request from Sencha for an update
-    of in-line editing a TreeGrid
-    @author frank.bergmann@project-open.com
-} {
-    {debug_p 0}
-}
 
+#ad_page_contract {
+#    Recieves a POST request from Sencha for an update
+#    of in-line editing a TreeGrid
+#    @author frank.bergmann@project-open.com
+#} {
+#    {debug_p 0}
+#}
+
+set debug_p 0
 
 # ---------------------------------------------------------------
 # Security
