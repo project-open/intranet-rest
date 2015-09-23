@@ -16,6 +16,7 @@
 
         <provides url="intranet-rest" version="4.1.0.0.0"/>
         <requires url="intranet-core" version="4.0.0.0.0"/>
+        <requires url="intranet-reporting" version="4.0.0.0.0"/>
 
         <callbacks>
         </callbacks>

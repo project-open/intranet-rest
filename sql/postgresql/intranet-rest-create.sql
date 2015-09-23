@@ -214,7 +214,7 @@ DECLARE
 	p_object_type_id	alias for $1;
 BEGIN
 	-- Delete any data related to the object
-	delete	from im_rest
+	delete	from im_rest_object_types
 	where	object_type_id = p_object_type_id;
 
 	-- Finally delete the object iself
@@ -298,7 +298,7 @@ BEGIN
 	-- Create the menu.
 	v_menu := im_menu__new (
 		null,			-- p_menu_id
-		''acs_object'',		-- object_type
+		''im_menu'',		-- object_type
 		now(),			-- creation_date
 		null,			-- creation_user
 		null,			-- creation_ip
@@ -347,7 +347,7 @@ BEGIN
 	-- Create the menu.
 	v_menu := im_menu__new (
 		null,				-- p_menu_id
-		''acs_object'',			-- object_type
+		''im_menu'',			-- object_type
 		now(),				-- creation_date
 		null,				-- creation_user
 		null,				-- creation_ip
