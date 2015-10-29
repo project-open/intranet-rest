@@ -277,6 +277,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     { -rest_user_id 0 }
     { -content "" }
     { -hash_array_list ""}
+    { -rest_oid "" }
     { -rest_otype "im_timesheet_task" }
     { -rest_otype_pretty "Timesheet Task" }
 } {
@@ -374,7 +375,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 	db_transaction {
 	    set rest_oid [db_string new_task "
 		SELECT im_timesheet_task__new (
-			null,			-- p_task_id
+			:rest_oid,		-- p_task_id
 			'im_timesheet_task',	-- object_type
 			now(),			-- creation_date
 			:rest_user_id,		-- creation_user

@@ -64,7 +64,14 @@ ad_proc im_rest_project_task_tree_update {
     }
     
     # project_id exists - update the existing task
-    set object_type [util_memoize [list db_string otype "select object_type from acs_objects where object_id = $project_id"]]
+    set object_type [db_string otype "select object_type from acs_objects where object_id = $project_id" -default ""]
+    if {"" == $object_type} {
+	# task doesn't exist yet - so this is a "create" instead of an "update" action
+	ns_log Notice "im_rest_project_task_tree_update: project_id=$project_id: Didn't find project - redirecting to 'create' action"
+	set result [im_rest_project_task_tree_create -project_id $project_id -var_hash_list $var_hash_list]
+	return $result
+    }
+
     ${object_type}_permissions $current_user_id $project_id view read write admin
     if {!$write} {
 	doc_return 200 "text/plain" "{success:false, message: 'No permissions to write project_id=$project_id for user=$current_user_id'}"
@@ -128,8 +135,8 @@ ad_proc im_rest_project_task_tree_create {
     array set var_hash $var_hash_list
 
     # No project_id!
-    if {"" != $project_id} {
-	doc_return 200 "text/plain" "{success:false, message: 'Create failed, object already contains project_id=$project_id in JSON data: $var_hash_list'}"
+    if {"" != $project_id && [db_string exists_p "select count(*) from im_projects where project_id=:project_id"]} {
+	doc_return 200 "text/plain" "{success:false, message: 'Create failed, object project_id=$project_id already exists. JSON data: $var_hash_list'}"
 	return
     }
 
@@ -150,6 +157,7 @@ ad_proc im_rest_project_task_tree_create {
     set project_id [im_rest_post_object_type_im_timesheet_task \
 			-format "json" \
 			-rest_user_id $current_user_id \
+			-rest_oid $project_id \
 			-rest_otype "im_timesheet_task" \
 			-rest_otype_pretty "Timesheet Task" \
 			-hash_array_list $var_hash_list]
