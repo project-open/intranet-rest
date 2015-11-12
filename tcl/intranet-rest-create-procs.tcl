@@ -1758,20 +1758,13 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
-    # Permissions
-    set add_p [im_permission $rest_user_id "add_projects"]
-    if {!$add_p} {
-	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
-    }
-
-
     # Store values into local variables
     set rel_type $rest_otype
     set creation_ip [ad_conn peeraddr]
     set sort_order ""
 
     # Extract a key-value list of variables from JSON POST request
-	ns_log Notice "im_rest_post_object_type_$rest_otype: Now parsing json content ..."
+    ns_log Notice "im_rest_post_object_type_$rest_otype: Now parsing json content ..."
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     ns_log Notice "im_rest_post_object_type_$rest_otype: hash_array=[array get hash_array]"
 
@@ -1791,47 +1784,25 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
 	}
     }
 
-	ns_log Notice "im_rest_post_object_type_$rest_otype: Found all necessary var's" 
-
+    ns_log Notice "im_rest_post_object_type_$rest_otype: Found all necessary var's" 
     if {![info exists percentage]} { set percentage "" }
     if {![info exists object_role_id]} { set object_role_id [im_biz_object_role_full_member] }
 
-    # Check for duplicate
-    set dup_sql "
-	select	min(rel_id)
-	from	acs_rels
-	where	rel_type = :rest_otype and
-		object_id_one = :object_id_one and
-		object_id_two = :object_id_two
-    "
-    set rest_oid [db_string duplicates $dup_sql -default ""]
-
-    if {"" == $rest_oid} {
-	# Add the new relationship only if it doesn't exist yet
-	# Gracefully handle duplicates
-	if {[catch {
-	    ns_log Notice "im_rest_post_object_type_$rest_otype: Now calling im_biz_object_member__new ..."
-	    set rest_oid [db_string new_im_biz_object_member "
-				select im_biz_object_member__new (
-					null,			-- rel_id
-					:rest_otype,		-- rel_type
-					:object_id_one,
-					:object_id_two,
-					:object_role_id,	-- full member, project manager, key account manger, ...
-					:percentage,		-- percentage of assignment
-					:rest_user_id,		-- Creation user
-					'[ns_conn peeraddr]'	-- Connection IP address for audit
-				)
-	    "]
-	} err_msg]} {
-	    ns_log Notice "im_rest_post_object_type_$rest_otype: Error creating $rest_otype_pretty: '$err_msg'."
-	    return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
-	}
-   
-	im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
-    } else {
-	ns_log Notice "im_rest_post_object_type_$rest_otype: im_biz_object_member__new skipped, found rest_oid: $rest_oid"
+    # Permissions
+    set breach_p [im_security_alert_check_integer -location "im_rest_post_object_type_im_biz_object_member" -value $object_id_one]
+    if {$breach_p} { return }
+    set object_type [util_memoize [list db_string object_type "select object_type from acs_objects where object_id = $object_id_one" -default ""]]
+    if {"" == $object_type} {
+	return [im_rest_error -format $format -http_status 403 -message "Could not find business object_id=$object_id_one."]
     }
+    set perm_cmd "${object_type}_permissions \$rest_user_id \$object_id_one view_p read_p write_p admin_p"
+    eval $perm_cmd
+    if {!$write_p} {
+	return [im_rest_error -format $format -http_status 403 -message "You don not have write permissions on object_id=$object_id_one"]
+    }
+
+    set rest_oid [im_biz_object_add_role -current_user_id $rest_user_id -percentage $percentage $object_id_two $object_id_one $object_role_id]
+    im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid

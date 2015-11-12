@@ -186,7 +186,7 @@ ad_proc -private im_rest_get_object_type {
     # This way we avoid "dangling objects" in acs_objects and sub-types.
     set sql [im_rest_object_type_select_sql -deref_p $deref_p -rest_otype $rest_otype -no_where_clause_p 1]
     append sql "
-	where	o.object_type = :rest_otype and
+	where	o.object_type in ('[join [im_rest_object_type_subtypes -rest_otype $rest_otype] "','"]') and
 		o.object_id in (
 			select  t.$id_column
 			from    $table_name t

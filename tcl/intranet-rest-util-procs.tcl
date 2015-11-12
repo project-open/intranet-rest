@@ -426,6 +426,8 @@ ad_proc -public im_rest_object_type_columns {
     return $columns
 }
 
+
+
 ad_proc -public im_rest_object_type_index_columns { 
     -rest_otype:required
 } {
@@ -451,6 +453,32 @@ ad_proc -public im_rest_object_type_index_columns {
 
     return [db_list index_columns $index_columns_sql]
 }
+
+
+
+
+ad_proc -public im_rest_object_type_subtypes { 
+    -rest_otype:required
+} {
+    Returns a list of all object types equal or below
+    rest_otype (including rest_otype).
+} {
+    set breach_p [im_security_alert_check_alphanum -location "im_rest_object_type_subtypes" -value $rest_otype]
+    # Return a save value to calling procedure
+    if {$breach_p} { return $rest_otype }
+
+    set sub_type_sql "
+	select	sub.object_type
+	from	acs_object_types ot, 
+		acs_object_types sub
+	where	ot.object_type = '$rest_otype' and 
+		sub.tree_sortkey between ot.tree_sortkey and tree_right(ot.tree_sortkey)
+	order by sub.tree_sortkey
+    "
+
+    return [util_memoize [list db_list sub_types $sub_type_sql] 3600000]
+}
+
 
 
 # ----------------------------------------------------------------------
