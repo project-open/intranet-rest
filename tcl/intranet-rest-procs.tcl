@@ -87,7 +87,7 @@ ad_proc -private im_rest_cookie_auth_user_id {
         ns_log Notice "im_rest_cookie_auth_user_id: ad_session_id=$ad_session_id"
 
 	set rest_user_id ""
-	catch { set rest_user_id [ad_get_user_id] }
+	catch { set rest_user_id [ad_conn user_id] }
 
 	if {"" != $rest_user_id} {
 	    ns_log Notice "im_rest_cookie_auth_user_id: found authenthicated rest_user_id: storing into cache"
@@ -107,7 +107,7 @@ ad_proc -private im_rest_cookie_auth_user_id {
         ns_log Notice "im_rest_cookie_auth_user_id: ad_user_login=$ad_user_login"
 
 	set rest_user_id ""
-	catch { set rest_user_id [ad_get_user_id] }
+	catch { set rest_user_id [ad_conn user_id] }
 	if {"" != $rest_user_id} {
 	    ns_log Notice "im_rest_cookie_auth_user_id: found authenticated rest_user_id: storing into cache"
 	    ns_cache set im_rest $ad_user_login $rest_user_id    

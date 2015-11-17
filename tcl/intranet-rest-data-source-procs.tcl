@@ -23,7 +23,7 @@ ad_proc im_rest_project_task_tree_action {
     Create, Update or Delete a task coming from TreeStore
 } {
     ns_log Notice "im_rest_project_task_tree_action: var_hash_list=$var_hash_list"
-    set current_user_id [ad_get_user_id]
+    set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
     # Ignore the root of the tree that might be send by the Sencha side
@@ -55,7 +55,7 @@ ad_proc im_rest_project_task_tree_update {
     Update a task coming from TreeStore
 } {
     ns_log Notice "im_rest_project_task_tree_update: project_id=$project_id, var_hash_list=$var_hash_list"
-    set current_user_id [ad_get_user_id]
+    set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
     if {"" == $project_id} {
@@ -98,7 +98,7 @@ ad_proc im_rest_project_task_tree_delete {
     Delete a task coming from TreeStore
 } {
     ns_log Notice "im_rest_project_task_tree_delete: project_id=$project_id, var_hash_list=$var_hash_list"
-    set current_user_id [ad_get_user_id]
+    set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
     if {"" == $project_id} {
@@ -131,7 +131,7 @@ ad_proc im_rest_project_task_tree_create {
     Create a new task coming from TreeStore
 } {
     ns_log Notice "im_rest_project_task_tree_create: project_id=$project_id, var_hash_list=$var_hash_list"
-    set current_user_id [ad_get_user_id]
+    set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
     # No project_id!
