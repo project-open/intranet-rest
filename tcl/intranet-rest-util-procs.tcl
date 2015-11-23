@@ -269,7 +269,7 @@ ad_proc -public im_rest_object_type_select_sql {
     set super_types [im_object_super_types -object_type $rest_otype]
     set s [list]
     foreach t $super_types {
-	if {$t == "acs_object"} { continue }
+	if {$t eq "acs_object"} { continue }
 	lappend s $t
     }
     set super_types $s
@@ -643,8 +643,8 @@ ad_proc -public im_rest_get_content {} {
     # ns_openexcl can fail, since tmpnam is known not to
     # be thread/process safe.  Hence spin till success
     set fp ""
-    while {$fp == ""} {
-        set filename "[ns_tmpnam][clock clicks -milliseconds].rpc2"
+    while {$fp eq ""} {
+        set filename "[ad_tmpnam][clock clicks -milliseconds].rpc2"
         set fp [ns_openexcl $filename]
     }
 

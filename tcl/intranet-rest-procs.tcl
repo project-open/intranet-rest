@@ -261,10 +261,10 @@ ad_proc -private im_rest_call_get {
 
     # Security checks
     set alert_p 0
-    set alert_p [expr $alert_p || [im_security_alert_check_integer -location "im_rest_call: user_id" -value $auth_user_id]]
+    set alert_p [expr {$alert_p || [im_security_alert_check_integer -location "im_rest_call: user_id" -value $auth_user_id]}]
     if {"data-source" != $rest_otype} {
-	set alert_p [expr $alert_p || [im_security_alert_check_integer -location "im_rest_call: rest_oid" -value $rest_oid]]
-	set alert_p [expr $alert_p || [im_security_alert_check_alphanum -location "im_rest_call: rest_otype" -value $rest_otype]]
+	set alert_p [expr {$alert_p || [im_security_alert_check_integer -location "im_rest_call: rest_oid" -value $rest_oid]}]
+	set alert_p [expr {$alert_p || [im_security_alert_check_alphanum -location "im_rest_call: rest_otype" -value $rest_otype]}]
     }
     if {$alert_p} {
     	return [im_rest_error -format $format -http_status 500 -message "Internal error: Found a security error, please check your security notifications"]

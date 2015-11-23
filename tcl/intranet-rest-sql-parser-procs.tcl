@@ -531,7 +531,7 @@ ad_proc -public sql_value_litteral {str} {
 	    set str [string range $str 1 end]
 	    set char [string range $str 0 0]
 	    set cnt 0
-	    while {$cnt < 1000 && "'" != $char && [string length $str] > 0} {
+	    while {$cnt < 1000 && "'" != $char && $str ne ""} {
 		append lit $char
 		set str [string range $str 1 end]
 		set char [string range $str 0 0]
@@ -544,7 +544,7 @@ ad_proc -public sql_value_litteral {str} {
 	    # Skip whitespaces after tick
 	    set cnt 0
 	    set char [string range $str 0 0]
-	    while {$cnt < 1000 && " " == $char && [string length $str] > 0} {
+	    while {$cnt < 1000 && " " == $char && $str ne ""} {
 		set str [string range $str 1 end]
 		set char [string range $str 0 0]
 		incr cnt
@@ -618,7 +618,7 @@ ad_proc -public sql_operator {str} {
     # ns_log Notice "sql_operator: $str"
 
     set s0 [lindex $str 0]
-    set operators {"=" "!=" "<" ">" "<=" ">=" "<>"}
+    set operators {"=" " != " "<" ">" "<=" ">=" "<>"}
     set found_operator ""
     foreach operator $operators {
 	if {$s0 == $operator} { return [list $operator [lrange $str 1 end] ""] }

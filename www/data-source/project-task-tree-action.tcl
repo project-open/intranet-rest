@@ -18,7 +18,7 @@ set debug_p 0
 # ---------------------------------------------------------------
 
 # Check that the user is logged in
-set current_user_id [ad_maybe_redirect_for_registration]
+set current_user_id [auth::require_login]
 ns_log Notice "project-task-tree-action: query_hash_pairs=$query_hash_pairs"
 array set var_hash $query_hash_pairs
 set action $var_hash(action)

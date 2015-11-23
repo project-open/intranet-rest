@@ -158,7 +158,7 @@ switch $format {
 	# ---------------------------------------------------------
 	
 	set json_p 0
-	set current_user_id [ad_maybe_redirect_for_registration]
+	set current_user_id [auth::require_login]
 	set current_user_is_admin_p [im_is_user_site_wide_or_intranet_admin $current_user_id]
 	set page_title [lang::message::lookup "" intranet-rest.REST_API "REST API"]
 	set context_bar [im_context_bar $page_title]

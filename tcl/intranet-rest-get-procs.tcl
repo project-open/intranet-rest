@@ -60,8 +60,8 @@ ad_proc -private im_rest_get_object_type {
     # -------------------------------------------------------
     # Get some more information about the current object type
     set otype_info [util_memoize [list db_list_of_lists rest_otype_info "select table_name, id_column from acs_object_types where object_type = '$rest_otype'"]]
-    set table_name [lindex [lindex $otype_info 0] 0]
-    set id_column [lindex [lindex $otype_info 0] 1]
+    set table_name [lindex $otype_info 0 0]
+    set id_column [lindex $otype_info 0 1]
     if {"" == $table_name} {
 	im_rest_error -format $org_format -http_status 500 -message "Invalid DynField configuration: Object type '$rest_otype' doesn't have a table_name specified in table acs_object_types."
     }
@@ -840,7 +840,7 @@ ad_proc -private im_rest_get_im_categories {
         set category_translated [lang::message::lookup $locale $category_key $category]
 
         # Calculate indent
-        set indent [expr [string length tree_sortkey] - 8]
+        set indent [expr {[string length tree_sortkey] - 8}]
 
 	# Check permissions
 	set read_p $rest_otype_read_all_p

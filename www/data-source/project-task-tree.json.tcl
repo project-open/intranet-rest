@@ -17,7 +17,7 @@ ns_log Notice "project-task-tree.json: query_hash_pairs=$query_hash_pairs"
 # --------------------------------------------
 # Security & Permissions
 #
-set current_user_id [ad_maybe_redirect_for_registration]
+set current_user_id [auth::require_login]
 im_project_permissions $current_user_id $project_id view read write admin
 if {!$read} {
     im_rest_error -format "json" -http_status 403 -message "You (user #$current_user_id) have no permissions to read project #$project_id"

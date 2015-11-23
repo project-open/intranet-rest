@@ -14,7 +14,7 @@ ad_page_contract {
 # --------------------------------------------
 # Security & Permissions
 #
-set current_user_id [ad_maybe_redirect_for_registration]
+set current_user_id [auth::require_login]
 if {"" == $cost_center_id || 0 == $cost_center_id} {
     # Use the topmost cost center as the base
     set cost_center_id [im_cost_center_company]

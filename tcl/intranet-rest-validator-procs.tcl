@@ -43,7 +43,7 @@ ad_proc -private im_rest_validate_call {
     foreach {rfd wfd headers} $connInfo break
     close $wfd
     set length [ns_set iget $headers content-length]
-    if {[string match "" $length]} {
+    if {$length eq ""} {
 	set length -1
     }
     set page ""
@@ -52,7 +52,7 @@ ad_proc -private im_rest_validate_call {
 	while {1} {
 	    set buf [_ns_http_read $timeout $rfd $length]
 	    append page $buf
-	    if {[string match "" $buf]} {
+	    if {$buf eq ""} {
 		break
 	    }
 	    if {$length > 0} {
@@ -196,7 +196,7 @@ ad_proc -private im_rest_validate_list {
 	if {[info exists result_hash(total)]} { set total $result_hash(total) }
 	if {[info exists result_hash(success)]} { set success $result_hash(success) }
 	if {[info exists result_hash(message)]} { set message $result_hash(message) }
-	if {[info exists result_hash(data)]} { set data [lindex [lindex [lindex $result_hash(data) 1] 0] 1] }
+	if {[info exists result_hash(data)]} { set data [lindex [lindex $result_hash(data) 1] 0 1] }
 	set data_len [llength $data]
 	set link "<a href=$url>url</a>"
 	
@@ -257,7 +257,7 @@ ad_proc -private im_rest_validate_projects {
 	if {[info exists result_hash(total)]} { set total $result_hash(total) }
 	if {[info exists result_hash(success)]} { set success $result_hash(success) }
 	if {[info exists result_hash(message)]} { set message $result_hash(message) }
-	if {[info exists result_hash(data)]} { set data [lindex [lindex [lindex $result_hash(data) 1] 0] 1] }
+	if {[info exists result_hash(data)]} { set data [lindex [lindex $result_hash(data) 1] 0 1] }
 	set data_len [llength $data]
 	set link "<a href=$url>url</a>"
     }
@@ -340,7 +340,7 @@ ad_proc -private im_rest_validate_projects {
 	    if {[info exists result_hash(total)]} { set total $result_hash(total) }
 	    if {[info exists result_hash(success)]} { set success $result_hash(success) }
 	    if {[info exists result_hash(message)]} { set message $result_hash(message) }
-	    if {[info exists result_hash(data)]} { set data [lindex [lindex [lindex $result_hash(data) 1] 0] 1] }
+	    if {[info exists result_hash(data)]} { set data [lindex [lindex $result_hash(data) 1] 0 1] }
 	    set data_len [llength $data]
 	    set link "<a href=$url>url</a>"
 	    
@@ -368,7 +368,7 @@ ad_proc -private im_rest_validate_projects {
 	    if {[info exists result_hash(total)]} { set total $result_hash(total) }
 	    if {[info exists result_hash(success)]} { set success $result_hash(success) }
 	    if {[info exists result_hash(message)]} { set message $result_hash(message) }
-	    if {[info exists result_hash(data)]} { set data [lindex [lindex [lindex $result_hash(data) 1] 0] 1] }
+	    if {[info exists result_hash(data)]} { set data [lindex [lindex $result_hash(data) 1] 0 1] }
 	    set link "<a href=$url>url</a>"
 	    
 	    set color "white"
@@ -384,7 +384,7 @@ ad_proc -private im_rest_validate_projects {
 	    set operation "update"
 	    set form_vars [export_vars {auth_token {user_id $rest_user_id} {format json}}]
 
-	    set prob [expr round(rand() * 100.0 * 10000.0) / 10000.0]
+	    set prob [expr {round(rand() * 100.0 * 10000.0) / 10000.0}]
 	    set form [ns_set new]
 	    ns_set put $form presales_probability $prob
 
@@ -406,7 +406,7 @@ ad_proc -private im_rest_validate_projects {
 	    if {[info exists result_hash(total)]} { set total $result_hash(total) }
 	    if {[info exists result_hash(success)]} { set success $result_hash(success) }
 	    if {[info exists result_hash(message)]} { set message $result_hash(message) }
-	    if {[info exists result_hash(data)]} { set data [lindex [lindex [lindex $result_hash(data) 1] 0] 1] }
+	    if {[info exists result_hash(data)]} { set data [lindex [lindex $result_hash(data) 1] 0 1] }
 	    set link "<a href=$url>url</a>"
 
 	    set color "white"
