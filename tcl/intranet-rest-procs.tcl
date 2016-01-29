@@ -363,8 +363,11 @@ ad_proc -private im_rest_call {
     # Check the "rest_otype" to be a valid object type
     set valid_rest_otypes [util_memoize [list db_list otypes "
 	select	object_type 
-	from	acs_object_types union
-	select	'im_category'
+	from	acs_object_types 
+		union
+			select	'im_category'
+		union 
+			select  'im_indicator_result'
     "]]
     if {[lsearch $valid_rest_otypes $rest_otype] < 0} { 
 	return [im_rest_error -format $format -http_status 406 -message "Invalid object_type '$rest_otype'. Valid object types include {im_project|im_company|...}."] 
@@ -375,6 +378,15 @@ ad_proc -private im_rest_call {
 	GET {
 	    # Handle both "read" and "list" operations using the same procedure
 	    switch $rest_otype {
+                im_indicator_result {
+                    return [im_rest_get_im_indicator_result_interval \
+                                -format $format \
+                                -rest_user_id $rest_user_id \
+                                -rest_otype $rest_otype \
+                                -rest_oid $rest_oid \
+                                -query_hash_pairs $query_hash_pairs \
+			    ]
+                }
 		im_category {
 		    return [im_rest_get_im_categories \
 				-format $format \

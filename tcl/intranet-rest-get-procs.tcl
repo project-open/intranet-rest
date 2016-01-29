@@ -1004,3 +1004,162 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
     return
 }
 
+
+ad_proc -private im_rest_get_im_indicator_result_interval {
+    { -format "xml" }
+    { -rest_user_id 0 }
+    { -rest_otype "" }
+    { -query_hash_pairs {} }
+    { -rest_oid ""}
+    { -debug 0 }
+} {
+        Handler for GET rest calls on indicator results
+} {
+    
+    # Note: var "result" had been replaced with "output" since it is used in table im_indicator_results
+    ns_log Notice "im_rest_get_im_indicator_result_interval: format=$format, user_id=$rest_user_id, rest_otype=$rest_otype, query_hash=$query_hash_pairs"
+    array set query_hash $query_hash_pairs
+        set base_url "[im_rest_system_url]/intranet-rest"
+    
+    set rest_indicator_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = 'im_indicator'" -default 0]]
+    set rest_otype_read_all_p [im_object_permission -object_id $rest_indicator_otype_id -user_id $rest_user_id -privilege "read"]
+    
+    # Get locate for translation
+    set locale [lang::user::locale -user_id $rest_user_id]
+    
+    # -------------------------------------------------------
+    # Valid variables to return indicators
+    set valid_vars {result_id result_indicator_id result_date result_date_pretty result result_count result_system_key result_sector_id result_company_size result_geo_region_id result_object_id}
+    
+    # -------------------------------------------------------
+    # Check if there is a where clause specified in the URL and validate the clause.
+    set where_clause ""
+    if {[info exists query_hash(query)]} { set where_clause $query_hash(query)}
+    
+    # -------------------------------------------------------
+    # Check if there are "valid_vars" specified in the HTTP header
+    # and add these vars to the SQL clause
+    set where_clause_list [list]
+    foreach v $valid_vars {
+	if {[info exists query_hash($v)]} { lappend where_clause_list "$v=$query_hash($v)" }
+    }
+    if {"" != $where_clause && [llength $where_clause_list] > 0} { append where_clause " and " }
+    append where_clause [join $where_clause_list " and "]
+    
+    # Check that the query is a valid SQL where clause
+    set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
+    
+    if {!$valid_sql_where} {
+	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
+	return
+    }
+    if {"" != $where_clause} { set where_clause "and $where_clause" }
+    
+    # Single Object?
+    set where_clause_oid ""
+    if { "" != $rest_oid } { set where_clause_oid "and result_id = :rest_oid" }
+    
+    # Select SQL: Pull out categories.
+    set sql "
+                select
+                        result_id as rest_oid,
+                        to_char(r.result_date, 'YYYY-MM-DD') as result_date_pretty,
+                        r.*
+                from
+                        im_indicator_results r
+                where
+                        1=1
+                        $where_clause
+                        $where_clause_oid
+                order by
+                        result_id
+        "
+    
+    # Append pagination "LIMIT $limit OFFSET $start" to the sql
+    
+    set unlimited_sql $sql
+    append sql [im_rest_object_type_pagination_sql -query_hash_pairs $query_hash_pairs]
+    set value ""
+    set output ""
+    set obj_ctr 0
+    
+    db_foreach objects $sql {
+	
+        # Calculate indent
+	# set indent [expr [string length tree_sortkey] - 8]
+	
+        # Check permissions
+        set read_p $rest_otype_read_all_p
+        set read_p 1
+        if {!$read_p} { continue }
+	
+        set url "$base_url/$rest_otype/$rest_oid"
+	
+	switch $format {
+	    xml { append output "<object_id id=\"$rest_oid\" href=\"$url\">$result_id</object_id>\n" }
+	    html {
+		append output "<tr>
+                                <td>$rest_oid</td>
+                                <td>$result_indicator_id</td>
+                                        <td>$result_date_pretty</td>
+                                        <td align='right'>$result</td>
+                                        <td align='right'>$result_count</td>
+                                        <td align='right'>$result_system_key</td>
+                                        <td align='right'>$result_sector_id</td>
+                                        <td align='right'>$result_company_size</td>
+                                        <td align='right'>$result_geo_region_id</td>
+                                        <td align='right'>$result_object_id</td>
+                        </tr>\n"
+	    }
+	    json {
+		set komma ",\n"
+		if {0 == $obj_ctr} { set komma "" }
+		set dereferenced_result ""
+		foreach v $valid_vars {
+		    eval "set a $$v"
+		    regsub -all {\n} $a {\n} a
+		    regsub -all {\r} $a {} a
+		    append dereferenced_result ", \"$v\": \"[ns_quotehtml $a]\""
+		}
+		append output "$komma{\"id\": \"$rest_oid\", \"object_name\": \"[ns_quotehtml $result_id]\"$dereferenced_result}"
+	    }
+	    default {}
+	}
+	incr obj_ctr
+    }
+    
+    switch $format {
+	html {
+	    set page_title "object_type: $rest_otype"
+	    im_rest_doc_return 200 "text/html" "
+                [im_header $page_title [im_rest_header_extra_stuff]][im_navbar]<table>
+                <tr class=rowtitle>
+                        <td class=rowtitle>object_id</td>
+                        <td class=rowtitle>result_indicator_id</td>
+                        <td class=rowtitle>date</td>
+                        <td class=rowtitle>result</td>
+                        <td class=rowtitle>result_count</td>
+                        <td class=rowtitle>result_system_key</td>
+                        <td class=rowtitle>result_sector_id</td>
+                        <td class=rowtitle>result_company_size</td>
+                        <td class=rowtitle>result_geo_region_id</td>
+                        <td class=rowtitle>result_object_id</td>
+                 </tr>
+                         $output
+                </table>[im_footer]
+                "
+	    return
+	}
+	xml {
+	    im_rest_doc_return 200 "text/xml" "<?xml version='1.0'?>\n<object_list>\n$output</object_list>\n"
+	    return
+	}
+	json {
+	    # Deal with different JSON variants for different AJAX frameworks
+	    set output "{\"success\": true,\n\"message\": \"im_rest_get_im_indicator_result_interval: Data loaded\",\n\"data\": \[\n$output\n\]\n}"
+	    im_rest_doc_return 200 "text/html" $output
+	    return
+	}
+    }
+    return
+}
