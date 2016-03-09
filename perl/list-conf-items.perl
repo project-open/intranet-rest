@@ -78,7 +78,7 @@ my $list_message;			# Hashref containing infos on a message
 
 
 # Parse the message
-# The parser will execute the list_hdl_xxx procedures which will
+# The parser will execute the list_hdl_* procedures which will
 # continue the execution
 $list_parser->parse($body);		# Parse the message
 

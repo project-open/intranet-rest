@@ -76,7 +76,7 @@ ad_proc -private im_rest_get_object_type {
     set rest_otype_read_none_p 0
 
     if {!$rest_otype_read_all_p} {
-	# There are "view_xxx_all" permissions allowing a user to see all objects:
+	# There are "view_..._all" permissions allowing a user to see all objects:
 	switch $rest_otype {
 	    bt_bug		{ }
 	    im_company		{ set rest_otype_read_all_p [im_permission $rest_user_id "view_companies_all"] }

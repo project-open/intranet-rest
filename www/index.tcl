@@ -202,33 +202,6 @@ switch $format {
 	# What operations are currently implemented on the REST API?
 	# ---------------------------------------------------------
 	
-	array set xxx_crud_hash {
-		group R
-		im_biz_object_member CRUD
-		im_company CRUD
-		im_company_employee_rel CRUD
-		im_cost_center R
-		im_dynfield_attribute R
-		im_dynfield_widget R
-		im_invoice CRUD
-		im_key_account_rel CRUD
-		im_material R
-		im_menu R
-		im_note R
-		im_office R
-		im_profile R
-		im_repeating_cost R
-		im_report R
-		im_ticket CRUD
-		im_ticket_ticket_rel CRUD
-		im_timesheet_task CRUD
-		im_trans_invoice CRUD
-		im_trans_task CRUD
-		im_user_absence CRUD
-		membership_rel CRUD
-		user CRU
-	}
-	
 	array set crud_hash {
 		im_invoice "<b>CRUL</b>"
 		im_invoice_item "<b>CRUL</b>"
