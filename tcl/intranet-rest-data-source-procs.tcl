@@ -87,6 +87,9 @@ ad_proc im_rest_project_task_tree_update {
 
     # Update assignees
     im_rest_project_task_tree_assignees -project_id $project_id -var_hash_list $var_hash_list
+
+    # Update predecessors
+    im_rest_project_task_tree_predecessors -project_id $project_id -var_hash_list $var_hash_list
 }
 
 
@@ -164,7 +167,15 @@ ad_proc im_rest_project_task_tree_create {
 
     # Update assignees
     im_rest_project_task_tree_assignees -project_id $project_id -var_hash_list $var_hash_list
+
+    # Update predecessors
+    im_rest_project_task_tree_predecessors -project_id $project_id -var_hash_list $var_hash_list
 }
+
+
+# -------------------------------------------------------
+# Update/Store assignees and predecessors
+# -------------------------------------------------------
 
 
 ad_proc im_rest_project_task_tree_assignees {
@@ -196,7 +207,65 @@ ad_proc im_rest_project_task_tree_assignees {
 }
 
 
-# -------------------------------------------------------
-# 
-# -------------------------------------------------------
+
+# ToDo: Delete dependencies!?!
+
+ad_proc im_rest_project_task_tree_predecessors {
+    -project_id:required
+    -var_hash_list:required
+} {
+    Update the resource predecessors to the task
+} {
+    ns_log Notice "im_rest_project_task_tree_predecessors: project_id=$project_id, var_hash_list=$var_hash_list"
+    array set var_hash $var_hash_list
+   
+    # Update task predecessors
+    set predecessors $var_hash(predecessors)
+    ns_log Notice "im_rest_project_task_tree_predecessors: predecessors=$predecessors"
+    set predecessor_list [lindex $predecessors 1]
+    foreach predecessor_object $predecessor_list {
+	set object_hash_list [lindex $predecessor_object 1]
+	ns_log Notice "im_rest_project_task_tree_predecessors: object_hash=$object_hash_list"
+	array unset object_hash
+	array set object_hash $object_hash_list
+	set pred_id $object_hash(pred_id)
+	set succ_id $object_hash(succ_id)
+	set type_id $object_hash(type_id)
+	set diff $object_hash(diff)
+
+	# Check if the dependency already exists
+	set dependency_id [db_string dep_id "
+		select	dependency_id
+		from	im_timesheet_task_dependencies
+		where	task_id_two = :pred_id and
+			task_id_one = :succ_id
+	" -default ""]
+
+	if {"" eq $dependency_id} {
+	    ns_log Notice "im_rest_project_task_tree_predecessors: rel_id does not exist - create new dependency"
+	    # Add the dude
+	    set insert_sql "
+		insert into im_timesheet_task_dependencies (
+			task_id_two, task_id_one, dependency_type_id, difference
+		) values (
+			:pred_id, :succ_id, :type_id, :diff
+		)
+	    "
+	    db_dml dep_insert $insert_sql
+	} else {
+	    ns_log Notice "im_rest_project_task_tree_predecessors: rel_id=$rel_id already exists - updating"
+	    # Update the dude
+	    set update_sql "
+		update im_timesheet_task_dependencies set
+			difference = :diff,
+			dependency_type_id = :type_id
+		where	task_id_two = :pred_id and
+			task_id_one = :succ_id
+	    "
+	    db_dml dep_update $update_sql
+	}
+
+    }
+}
+
 
