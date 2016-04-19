@@ -166,10 +166,14 @@ ad_proc im_rest_project_task_tree_create {
 			-hash_array_list $var_hash_list]
 
     # Update assignees
-    im_rest_project_task_tree_assignees -project_id $project_id -var_hash_list $var_hash_list
+    if {[info exists var_hash(assignees)]} {
+	im_rest_project_task_tree_assignees -project_id $project_id -var_hash_list $var_hash_list
+    }
 
     # Update predecessors
-    im_rest_project_task_tree_predecessors -project_id $project_id -var_hash_list $var_hash_list
+    if {[info exists var_hash(predecessors)]} {
+	im_rest_project_task_tree_predecessors -project_id $project_id -var_hash_list $var_hash_list
+    }
 }
 
 
@@ -204,6 +208,8 @@ ad_proc im_rest_project_task_tree_assignees {
 	db_dml update_assignation "update im_biz_object_members set percentage = :percent where rel_id = :rel_id"
 	ns_log Notice "im_rest_project_task_tree_assignees: rel_id=$rel_id"
     }
+
+    # ToDo: !!! Delete assignees that are not in the list anymore
 }
 
 
@@ -218,8 +224,9 @@ ad_proc im_rest_project_task_tree_predecessors {
 } {
     ns_log Notice "im_rest_project_task_tree_predecessors: project_id=$project_id, var_hash_list=$var_hash_list"
     array set var_hash $var_hash_list
-   
+
     # Update task predecessors
+    set pred_list [list 0]
     set predecessors $var_hash(predecessors)
     ns_log Notice "im_rest_project_task_tree_predecessors: predecessors=$predecessors"
     set predecessor_list [lindex $predecessors 1]
@@ -232,6 +239,9 @@ ad_proc im_rest_project_task_tree_predecessors {
 	set succ_id $object_hash(succ_id)
 	set type_id $object_hash(type_id)
 	set diff $object_hash(diff)
+
+	# Create a list of all predecessor tasks
+	lappend pred_list $pred_id
 
 	# Check if the dependency already exists
 	set dependency_id [db_string dep_id "
@@ -264,7 +274,19 @@ ad_proc im_rest_project_task_tree_predecessors {
 	    "
 	    db_dml dep_update $update_sql
 	}
+    }
 
+    # Get the list of all predecessors in the DB that are not preds anymore
+    set preds_to_delete [db_list pred_list "
+	select	dependency_id
+	from	im_timesheet_task_dependencies ttd
+	where	ttd.task_id_one = :project_id and
+		ttd.task_id_two not in ([join $pred_list ","])
+    "]
+    ns_log Notice "im_rest_project_task_tree_predecessors: the following preds need to be deleted: $preds_to_delete"
+
+    foreach pred_dep_id $preds_to_delete {
+	db_dml del_pred "delete from im_timesheet_task_dependencies where dependency_id = :pred_dep_id"
     }
 }
 
