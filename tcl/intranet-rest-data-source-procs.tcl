@@ -17,12 +17,14 @@ ad_library {
 # ---------------------------------------------------------------
 
 ad_proc im_rest_project_task_tree_action {
+    { -pass 0}
     { -action "" }
     -var_hash_list:required
 } {
     Create, Update or Delete a task coming from TreeStore
+    @param pass: 0:all actions, 1: create/update only, 2: dependencies only
 } {
-    ns_log Notice "im_rest_project_task_tree_action: var_hash_list=$var_hash_list"
+    ns_log Notice "im_rest_project_task_tree_action: pass=$pass, var_hash_list=$var_hash_list"
     set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
@@ -38,9 +40,9 @@ ad_proc im_rest_project_task_tree_action {
     if {[info exists var_hash(id)] && "" != $var_hash(id)} { set project_id $var_hash(id) }
 
     switch $action {
-	update { im_rest_project_task_tree_update -project_id $project_id -var_hash_list $var_hash_list	}
-	create { im_rest_project_task_tree_create -project_id $project_id -var_hash_list $var_hash_list	}
-	delete { im_rest_project_task_tree_delete -project_id $project_id -var_hash_list $var_hash_list	}
+	update { im_rest_project_task_tree_update -pass $pass -project_id $project_id -var_hash_list $var_hash_list	}
+	create { im_rest_project_task_tree_create -pass $pass -project_id $project_id -var_hash_list $var_hash_list	}
+	delete { im_rest_project_task_tree_delete -pass $pass -project_id $project_id -var_hash_list $var_hash_list	}
 	default {
 	    doc_return 200 "text/plain" "{success:false, message: 'tree_action: found invalid action=$action'}"
 	}
@@ -49,12 +51,14 @@ ad_proc im_rest_project_task_tree_action {
 }
 
 ad_proc im_rest_project_task_tree_update {
+    {-pass 0}
     -project_id:required
     -var_hash_list:required
 } {
     Update a task coming from TreeStore
+    @param pass: 0:all actions, 1: create/update only, 2: dependencies only
 } {
-    ns_log Notice "im_rest_project_task_tree_update: project_id=$project_id, var_hash_list=$var_hash_list"
+    ns_log Notice "im_rest_project_task_tree_update: pass=$pass, project_id=$project_id, var_hash_list=$var_hash_list"
     set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
@@ -62,13 +66,13 @@ ad_proc im_rest_project_task_tree_update {
 	doc_return 200 "text/plain" "{success:false, message: 'Update failed because we did not find project_id in JSON data: $var_hash_list'}"
 	return
     }
-    
+
     # project_id exists - update the existing task
     set object_type [db_string otype "select object_type from acs_objects where object_id = $project_id" -default ""]
     if {"" == $object_type} {
 	# task doesn't exist yet - so this is a "create" instead of an "update" action
-	ns_log Notice "im_rest_project_task_tree_update: project_id=$project_id: Didn't find project - redirecting to 'create' action"
-	set result [im_rest_project_task_tree_create -project_id $project_id -var_hash_list $var_hash_list]
+	ns_log Notice "im_rest_project_task_tree_update: pass=$pass, project_id=$project_id: Didn't find project - redirecting to 'create' action"
+	set result [im_rest_project_task_tree_create -pass $pass -project_id $project_id -var_hash_list $var_hash_list]
 	return $result
     }
 
@@ -79,28 +83,36 @@ ad_proc im_rest_project_task_tree_update {
     }
 
     # Update the main project fields via a generic REST routine
-    im_rest_object_type_update_sql \
-	-format "json" \
-	-rest_otype "im_timesheet_task" \
-	-rest_oid $project_id \
-	-hash_array $var_hash_list
-
+    if {0 eq $pass || 1 eq $pass} {
+	im_rest_object_type_update_sql \
+	    -format "json" \
+	    -rest_otype "im_timesheet_task" \
+	    -rest_oid $project_id \
+	    -hash_array $var_hash_list
+    }
+    
     # Update assignees
     im_rest_project_task_tree_assignees -project_id $project_id -var_hash_list $var_hash_list
 
     # Update predecessors
-    im_rest_project_task_tree_predecessors -project_id $project_id -var_hash_list $var_hash_list
+    if {0 eq $pass || 2 eq $pass} {
+	if {[info exists var_hash(predecessors)]} {
+	    im_rest_project_task_tree_predecessors -project_id $project_id -var_hash_list $var_hash_list
+	}
+    }
+
 }
 
 
 
 ad_proc im_rest_project_task_tree_delete {
+    {-pass 0}
     -project_id:required
     -var_hash_list:required
 } {
     Delete a task coming from TreeStore
 } {
-    ns_log Notice "im_rest_project_task_tree_delete: project_id=$project_id, var_hash_list=$var_hash_list"
+    ns_log Notice "im_rest_project_task_tree_delete: pass=$pass, project_id=$project_id, var_hash_list=$var_hash_list"
     set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
@@ -128,12 +140,14 @@ ad_proc im_rest_project_task_tree_delete {
 
 
 ad_proc im_rest_project_task_tree_create {
+    {-pass 0}
     -project_id:required
     -var_hash_list:required
 } {
     Create a new task coming from TreeStore
+    @param pass: 0:all actions, 1: create/update only, 2: dependencies only
 } {
-    ns_log Notice "im_rest_project_task_tree_create: project_id=$project_id, var_hash_list=$var_hash_list"
+    ns_log Notice "im_rest_project_task_tree_create: pass=$pass, project_id=$project_id, var_hash_list=$var_hash_list"
     set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
@@ -157,22 +171,27 @@ ad_proc im_rest_project_task_tree_create {
 	ad_script_abort
     }
 
-    set project_id [im_rest_post_object_type_im_timesheet_task \
+    # ToDo: What does this call return, do we need to check the result?
+    if {0 eq $pass || 1 eq $pass} {
+	im_rest_post_object_type_im_timesheet_task \
 			-format "json" \
 			-rest_user_id $current_user_id \
 			-rest_oid $project_id \
 			-rest_otype "im_timesheet_task" \
 			-rest_otype_pretty "Timesheet Task" \
-			-hash_array_list $var_hash_list]
+			-hash_array_list $var_hash_list
+    }
 
     # Update assignees
     if {[info exists var_hash(assignees)]} {
 	im_rest_project_task_tree_assignees -project_id $project_id -var_hash_list $var_hash_list
     }
 
-    # Update predecessors
-    if {[info exists var_hash(predecessors)]} {
-	im_rest_project_task_tree_predecessors -project_id $project_id -var_hash_list $var_hash_list
+    # Update predecessors on passes 0 or 2
+    if {0 eq $pass || 2 eq $pass} {
+	if {[info exists var_hash(predecessors)]} {
+	    im_rest_project_task_tree_predecessors -project_id $project_id -var_hash_list $var_hash_list
+	}
     }
 }
 
@@ -252,7 +271,7 @@ ad_proc im_rest_project_task_tree_predecessors {
 	" -default ""]
 
 	if {"" eq $dependency_id} {
-	    ns_log Notice "im_rest_project_task_tree_predecessors: rel_id does not exist - create new dependency"
+	    ns_log Notice "im_rest_project_task_tree_predecessors: dependency_id does not exist - create new dependency"
 	    # Add the dude
 	    set insert_sql "
 		insert into im_timesheet_task_dependencies (
@@ -263,7 +282,7 @@ ad_proc im_rest_project_task_tree_predecessors {
 	    "
 	    db_dml dep_insert $insert_sql
 	} else {
-	    ns_log Notice "im_rest_project_task_tree_predecessors: rel_id=$rel_id already exists - updating"
+	    ns_log Notice "im_rest_project_task_tree_predecessors: dependency_id=$dependency_id already exists - updating"
 	    # Update the dude
 	    set update_sql "
 		update im_timesheet_task_dependencies set
