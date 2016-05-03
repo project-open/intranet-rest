@@ -155,7 +155,6 @@ db_multirow task_multirow task_list $projects_sql {
 ns_log Notice "project-tree.json.tcl: starting to sort multirow"
 multirow_sort_tree -integer task_multirow project_id parent_id sort_order
 
-set title ""
 set task_json ""
 set ctr 0
 set old_level 1
