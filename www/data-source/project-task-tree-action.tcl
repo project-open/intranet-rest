@@ -49,6 +49,7 @@ if {[info exists json_hash(_object_)]} {
 
 if {[info exists json_hash(_array_)]} {
     set json_array $json_hash(_array_)
+
     ns_log Notice "project-task-tree-action: pass=1, array=$json_array"
     foreach array_elem $json_array {
 	ns_log Notice "project-task-tree-action: pass=1, array_elem=$array_elem"
@@ -57,10 +58,7 @@ if {[info exists json_hash(_array_)]} {
 	ns_log Notice "project-task-tree-action: pass=1, decomposing array_elem: $obj=$json_list"
 	im_rest_project_task_tree_action -pass 1 -action $action -var_hash_list $json_list
     }
-}
 
-if {[info exists json_hash(_array_)]} {
-    set json_array $json_hash(_array_)
     ns_log Notice "project-task-tree-action: pass=2, array=$json_array"
     foreach array_elem $json_array {
 	ns_log Notice "project-task-tree-action: pass=2, array_elem=$array_elem"
