@@ -214,6 +214,7 @@ ad_proc im_rest_project_task_tree_assignees {
     set assignees $var_hash(assignees)
     ns_log Notice "im_rest_project_task_tree_assignees: assignees=$assignees"
     set assignee_list [lindex $assignees 1]
+    set assignee_user_ids [list]
     foreach assignee_object $assignee_list {
 	set object_hash_list [lindex $assignee_object 1]
 	ns_log Notice "im_rest_project_task_tree_assignees: object_hash=$object_hash_list"
@@ -221,6 +222,7 @@ ad_proc im_rest_project_task_tree_assignees {
 	array set object_hash $object_hash_list
 	set user_id $object_hash(user_id)
 	set percent $object_hash(percent)
+	lappend assignee_user_ids $user_id
 
 	# Add the dude to the project and update percentage
 	set rel_id [im_biz_object_add_role $user_id $project_id [im_biz_object_role_full_member]]
@@ -228,7 +230,16 @@ ad_proc im_rest_project_task_tree_assignees {
 	ns_log Notice "im_rest_project_task_tree_assignees: rel_id=$rel_id"
     }
 
-    # ToDo: !!! Delete assignees that are not in the list anymore
+    # Delete assignees that are not in the list anymore
+    set db_assigned_user_ids [db_list db_assig "select object_id_two from acs_rels where rel_type = 'im_biz_object_member' and object_id_one = :project_id"]
+    ns_log Notice "im_rest_project_task_tree_assignees: db_assigned_user_ids=$db_assigned_user_ids"
+    foreach db_uid $db_assigned_user_ids {
+	if {[lsearch $assignee_user_ids $db_uid] < 0} {
+	    # The db_uid is still available in the DB, but not in the new data: delete it!
+	    ns_log Notice "im_rest_project_task_tree_assignees: found user_id=$db_uid assigned in the DB, but not in the new data - deleting"
+	    db_string del_rel "select im_biz_object_member__delete(:project_id, :db_uid) from dual"
+	}
+    }
 }
 
 
