@@ -206,12 +206,26 @@ template::multirow foreach task_multirow {
     set quoted_char_map {"\n" "\\n" "\r" "\\r" "\"" "\\\"" "\\" "\\\\"}
     set quoted_project_name [string map $quoted_char_map $project_name]
 
-# ${indent}\ticonCls:\"task-folder\",
+
+    set type ""
+    switch $project_type_id {
+	100 { set type "task" }
+	101 { set type "ticket" }
+	102 - 103 { set type "crm" }
+	2502 { set type "sla" }
+	2504 { set type "milestone" }
+	2510 { set type "program" }
+	4597 { set type "release-item" }
+	4599 { set type "release" }
+    }
+    if {[im_category_is_a $project_type_id [im_project_type_gantt]]} { set type "project" }
+    if {"t" eq $milestone_p} { set type "milestone" }
+    # ToDo: Deal with empty type
     
     append task_json "${indent}\{
 ${indent}\tid:$project_id,
 ${indent}\ttext:\"$quoted_project_name\",
-${indent}\tduration:13.5,
+${indent}\ticonCls:\"icon-$type\",
 ${indent}\tpredecessors:\[[join $predecessor_tasks ", "]\],
 ${indent}\tassignees:\[[join $assignees ", "]\],
 ${indent}\texpanded:$expanded,
