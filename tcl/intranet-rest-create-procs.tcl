@@ -117,7 +117,7 @@ ad_proc -private im_rest_post_object_type_im_project {
     }
 
     # Write Audit Trail
-    im_project_audit -project_id $rest_oid -action after_create  
+    im_audit -object_id $rest_oid -action after_create  
 
     # Add the creating user as a member, so that he's got the right to modify the project if he is not a privileged user
     im_biz_object_add_role $rest_user_id $rest_oid [im_biz_object_role_project_manager]
@@ -259,7 +259,7 @@ ad_proc -private im_rest_post_object_type_im_ticket {
     }
 
     # Write Audit Trail
-    im_project_audit -project_id $rest_oid -action after_create
+    im_audit -object_id $rest_oid -action after_create
     
     ns_log Notice "im_rest_post_object_type_im_ticket: Successfully created object with object_id=$rest_oid"
     set hash_array(rest_oid) $rest_oid
