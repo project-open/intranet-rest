@@ -214,7 +214,6 @@ ad_proc -public im_rest_hard_coded_deref_plpgsql_functions {
 	"im_projects-project_status_id" im_category_from_id 
 	"im_projects-billing_type_id" im_category_from_id 
 	"im_projects-on_track_status_id" im_category_from_id 
-	"im_projects-project_priority_id" im_category_from_id 
 	"im_projects-project_lead_id" im_name_from_id 
 	"im_projects-supervisor_id" im_name_from_id 
 	"im_projects-company_contact_id" im_name_from_id 
