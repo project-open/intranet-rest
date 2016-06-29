@@ -223,7 +223,7 @@ ad_proc -private im_rest_post_object_type_im_ticket {
     # Check for valid parent_id
     set company_id [db_string ticket_company "select company_id from im_projects where project_id = :parent_id" -default ""]
     if {"" == $company_id} {
-	return [im_rest_error -format $format -http_status 406 -message "Invalid $rest_otype_pretty field 'parent_id': parent_id should represent an 'open' project of type 'Service Level Agreement'. This SLA will become the container for the ticket."]
+	return [im_rest_error -format $format -http_status 406 -message "Invalid $rest_otype_pretty field 'parent_id': parent_id should represent an 'open' project of type 'Ticket Container'. This ticket container will become the container for the ticket."]
     }
 
     if {[catch {

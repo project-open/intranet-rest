@@ -68,7 +68,7 @@ my $customer_id = $customer_hash->{'data'}[0]{'user_id'};
 my $provider_hash = ProjectOpen->get_object_list("im_company", "company_type_id = 57");
 my $provider_id = $provider_hash->{'data'}[0]{'user_id'};
 
-# A SLA (Service Level Agreement) for creating tickets
+# A container for creating tickets
 my $sla_hash = ProjectOpen->get_object_list("im_project", "project_type_id = 2502");
 my $sla_id = $sla_hash->{'data'}[0]{'project_id'};
 
