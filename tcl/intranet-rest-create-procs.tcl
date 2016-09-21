@@ -18,7 +18,7 @@ ad_library {
 #
 #	Project
 #	Ticket
-#	Timesheet Task
+#	Gantt Task
 #	Translation Task
 #	Company
 #	User Absence
@@ -269,7 +269,7 @@ ad_proc -private im_rest_post_object_type_im_ticket {
 
 
 # -------------------------------------------------------
-# Timesheet Task
+# Gantt Task
 # -------------------------------------------------------
 
 ad_proc -private im_rest_post_object_type_im_timesheet_task {
@@ -279,7 +279,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     { -hash_array_list ""}
     { -rest_oid "" }
     { -rest_otype "im_timesheet_task" }
-    { -rest_otype_pretty "Timesheet Task" }
+    { -rest_otype_pretty "Gantt Task" }
 } {
     Create a new object and return its object_id
 } {
@@ -1478,7 +1478,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task_dependency {
     { -rest_user_id 0 }
     { -content "" }
     { -rest_otype "im_timesheet_task_dependency" }
-    { -rest_otype_pretty "Timesheet Task Dependency" }
+    { -rest_otype_pretty "Gantt Task Dependency" }
 } {
     Create a new task dependency and return the id.
 } {

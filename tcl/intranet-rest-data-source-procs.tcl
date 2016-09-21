@@ -178,7 +178,7 @@ ad_proc im_rest_project_task_tree_create {
 			-rest_user_id $current_user_id \
 			-rest_oid $project_id \
 			-rest_otype "im_timesheet_task" \
-			-rest_otype_pretty "Timesheet Task" \
+			-rest_otype_pretty "Gantt Task" \
 			-hash_array_list $var_hash_list
     }
 

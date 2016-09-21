@@ -106,7 +106,7 @@ lappend non_display_projects 0
 
 
 # --------------------------------------------
-# Get all the variables valid for timesheet task
+# Get all the variables valid for gantt task
 set valid_vars [util_memoize [list im_rest_object_type_columns -deref_p 0 -rest_otype "im_timesheet_task"]]
 set valid_vars [lsort -unique $valid_vars]
 
