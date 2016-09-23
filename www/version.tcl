@@ -13,25 +13,8 @@
 
 
 set version [im_rest_version]
-
-
-if {![info exists format]} { set format "html" }
-if {![info exists user_id]} { set user_id 0 }
+if {![info exists format]} { set format "json" }
 set rest_url "[im_rest_system_url]/intranet-rest"
-
-if {0 == $user_id} {
-    # User not autenticated
-    switch $format {
-	html {
-	    ad_return_complaint 1 "Not authorized"
-	    ad_script_abort
-	}
-	json {
-	    im_rest_error -http_status 401 -message "Not authenticated"
-	    return
-	}
-    }
-}
 
 # Got a user already authenticated by Basic HTTP auth or auto-login
 switch $format {
