@@ -632,8 +632,7 @@ ad_proc -public im_rest_error {
 
 
 ad_proc -public im_rest_get_content {} {
-    There's no [ns_conn content] so this is a hack to get the content of the
-    REST request. 
+    There's no [ns_conn content] so this is a hack to get the content of the REST request. 
     @return string - the request
     @author Dave Bauer
 } {
@@ -656,7 +655,8 @@ ad_proc -public im_rest_get_content {} {
         append text [read $fp]
     }
     close $fp
-    ns_unlink $filename
+    file delete $filename
+    # ns_unlink $filename     #; deprecated
     return $text
 }
 

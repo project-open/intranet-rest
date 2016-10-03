@@ -934,16 +934,13 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
 		aa.object_type||'.'||aa.attribute_name as rest_object_name,
 		da.attribute_id as rest_oid,
 		da.*,
-		aa.*,
-		o.*
+		aa.*
 	from	im_dynfield_attributes da,
-		acs_attributes aa,
-		acs_objects o
-	where	da.acs_attribute_id = aa.attribute_id and
-		da.attribute_id = o.object_id
+		acs_attributes aa
+	where	da.acs_attribute_id = aa.attribute_id
 		$where_clause
 	order by
-		o.object_type, 
+		aa.object_type, 
 		aa.attribute_name
     "
 

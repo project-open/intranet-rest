@@ -116,20 +116,24 @@ ad_proc -private im_rest_post_object {
     set content [im_rest_get_content]
     ns_log Notice "im_rest_post_object: content='$content'"
 
-    # Permissions for the object type
+    # Check the REST level permissions on the object type
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = '$rest_otype'" -default 0]]
-    set read_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "read"]
-    if {!$read_p} {
-	im_rest_error -format $format -http_status 403 -message "User #$rest_user_id has no read permission on object #$rest_otype_id (im_hour_interval object type)"
+    set write_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "write"]
+    if {!$write_p} {
+	set msg "User #$rest_user_id has no write permission in general on object type '$rest_otype' - please check your REST permissions"
+	im_rest_error -format $format -http_status 403 -message $msg
 	return
     }
 
     # Check if there is an object type specific permission checker
     set write_p 0
     if {0 != [llength [info commands ${rest_otype}_permissions]]} {
+	ns_log Notice "im_rest_post_object: found permission proc ${rest_otype}_permissions - evaluating permissions"
 	catch {
 	    eval "${rest_otype}_permissions $rest_user_id $rest_oid view_p read_p write_p admin_p"
 	}
+    } else {
+	ns_log Notice "im_rest_post_object: Did not find permission proc ${rest_otype}_permissions - POST permissions denied"
     }
     if {!$write_p} {
 	im_rest_error -format $format -http_status 403 -message "User #$rest_user_id has no write permission on object #$rest_oid"
