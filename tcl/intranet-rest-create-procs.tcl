@@ -2127,7 +2127,9 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
 		preference_url = :preference_url and
 		preference_key = :preference_key
     "
+    ns_log Notice "im_rest_post_object_type_$rest_otype: before executing dup_sql: preference_object_id=$preference_object_id, preference_url=$preference_url, preference_key=$preference_key, dup_sql=$dup_sql"
     set rest_oid [db_string duplicates $dup_sql -default 0]
+    ns_log Notice "im_rest_post_object_type_$rest_otype: rest_oid='$rest_oid'"
     if {$rest_oid} {
 	# Exception: Just update the preference.
 	db_dml update_preference "
@@ -2141,13 +2143,7 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
 	if {[catch {
 	    set rest_oid [db_string new_im_sencha_preference "
 		select im_sencha_preference__new (
-			null,			-- preference_id
-			:rest_otype,		-- object_type
-			now(),			-- creation_date
-			:creation_user,
-			:creation_ip,
-			null,			-- context_id
-
+			null, :rest_otype, now(), :creation_user, :creation_ip, null,	-- object params
 			:preference_type_id,
 			:preference_status_id,
 			:preference_object_id,
