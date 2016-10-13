@@ -31,7 +31,7 @@ set message "Successfully performed action=$action"
 if {[catch {
 
     # Parse the JSON POST data
-    sset post_content [ns_conn content]
+    set post_content [ns_conn content]
     array set json_hash [util::json::parse $post_content]
     ns_log Notice "project-task-tree-action: json_hash=[array get json_hash]"
     
