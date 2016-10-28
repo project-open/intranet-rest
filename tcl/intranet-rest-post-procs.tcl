@@ -120,7 +120,7 @@ ad_proc -private im_rest_post_object {
     set rest_otype_id [util_memoize [list db_string otype_id "select object_type_id from im_rest_object_types where object_type = '$rest_otype'" -default 0]]
     set write_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "write"]
     if {!$write_p} {
-	set msg "User #$rest_user_id has no write permission in general on object type '$rest_otype' - please check your REST permissions"
+	set msg "im_rest_post_object: User #$rest_user_id has no 'write' permission in general on object type '$rest_otype' - please check your REST permissions"
 	im_rest_error -format $format -http_status 403 -message $msg
 	return
     }
