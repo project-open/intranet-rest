@@ -283,20 +283,19 @@ switch $format {
 	    }
 	
 	
-	set profile_sql {
+	set profile_sql "
 		select DISTINCT
 		        g.group_name,
 		        g.group_id,
 		        p.profile_gif
-		from
-		        acs_objects o,
+		from	acs_objects o,
 		        groups g,
 		        im_profiles p
-		where
-		        g.group_id = o.object_id
+		where	g.group_id = o.object_id
 		        and g.group_id = p.profile_id
 		        and o.object_type = 'im_profile'
-	}
+			and g.group_id != [im_profile_po_admins]
+	"
 	
 	set multirow_select ""
 	set multirow_extend {object_type_url object_type_gif_html crud_status object_wiki_url wiki}
