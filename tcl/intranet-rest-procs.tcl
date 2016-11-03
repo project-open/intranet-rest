@@ -46,8 +46,8 @@ ad_proc -private im_rest_call_post {} {
 ad_proc -private im_rest_call_put {} {
     Handler for PUT rest calls
 } {
-    set rest_user_id [im_rest_cookie_auth_user_id]
-    ns_log Notice "im_rest_call_put: rest_user_id=$rest_user_id"
+    # set rest_user_id [im_rest_cookie_auth_user_id]
+    # ns_log Notice "im_rest_call_put: rest_user_id=$rest_user_id"
     return [im_rest_call_get -http_method PUT]
 }
 
