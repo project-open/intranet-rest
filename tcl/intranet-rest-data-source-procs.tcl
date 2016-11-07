@@ -122,7 +122,8 @@ ad_proc im_rest_project_task_tree_delete {
     }
     
     # project_id exists - update the existing task
-    set object_type [util_memoize [list db_string otype "select object_type from acs_objects where object_id = $project_id"]]
+    set object_type [util_memoize [list db_string otype "select object_type from acs_objects where object_id = $project_id" -default ""]]
+    if {"" eq $object_type} { return }; # Delete object before it really was created. Kind of OK...
     ${object_type}_permissions $current_user_id $project_id view read write admin
     if {!$admin} {
 	doc_return 200 "text/plain" "{success:false, message: 'No permissions to admin project_id=$project_id for user=$current_user_id'}"
