@@ -293,8 +293,8 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     
     # Store the values into local variables
     set project_nr ""
-    set project_status_id [im_project_status_open]
-    set project_type_id [im_project_type_task]
+    set project_status_id ""
+    set project_type_id ""
     set planned_units ""
     set billable_units ""
     set percent_completed 0
@@ -305,14 +305,23 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     set sort_order ""
     set gantt_project_id ""
     set note ""
-   
+ 
     # Extract a key-value list of variables from JSON POST request
     if {"" != $hash_array_list} {
 	array set hash_array $hash_array_list
     } else {
 	array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
     }
-   
+
+    if {"" == $project_status_id} {
+ 	set project_status_id [im_project_status_open]
+ 	set hash_array(project_status_id) $project_status_id
+    }
+    if {"" == $project_type_id} {
+ 	set project_type_id [im_project_type_task]
+ 	set hash_array(project_type_id) $project_type_id
+    }
+  
     # write hash values as local variables
     foreach key [array names hash_array] {
 	set value $hash_array($key)
