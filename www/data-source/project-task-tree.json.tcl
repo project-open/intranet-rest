@@ -148,6 +148,9 @@ db_multirow task_multirow task_list $projects_sql {
     # Deal with partial data if exactly one of the two start or end dates are set
     if {"" == $start_date && "" != $end_date} { set start_date $end_date }
     if {"" != $start_date && "" == $end_date} {	set end_date $start_date }
+
+    # Workaround for bug in Sencha tree display if cost_center_id is empty
+    if {"" == $cost_center_id} { set cost_center_id [im_cost_center_company] }
 }
 
 # Sort the tree according to the specified sort order
