@@ -64,6 +64,8 @@ ad_proc -private im_rest_call_get {
 } {
     Handler for GET rest calls
 } {
+    ns_log Notice "im_rest_call_get: Starting"
+
     # Get the entire URL and decompose into the "rest_otype" 
     # and the "rest_oid" pieces. Splitting the URL on "/"
     # will result in "{} intranet-rest rest_otype rest_oid":
@@ -71,6 +73,7 @@ ad_proc -private im_rest_call_get {
     set url_pieces [split $url "/"]
     set rest_otype [lindex $url_pieces 2]
     set rest_oid [lindex $url_pieces 3]
+    ns_log Notice "im_rest_call_get: oid=$rest_oid, otype=$rest_otype"
 
     # Get the information about the URL parameters, parse
     # them and store them into a hash array.
@@ -92,7 +95,11 @@ ad_proc -private im_rest_call_get {
     if {[info exists query_hash(format)]} { set format $query_hash(format) }
 
     # Determine the authenticated user_id. 0 means not authenticated.
-    array set auth_hash [im_rest_authenticate -format $format -query_hash_pairs [array get query_hash]]
+    ns_log Notice "im_rest_call_get: before im_rest_authenticate:  format=$format, query_hash_pairs=[array get query_hash]"
+    set auth_hash_list [im_rest_authenticate -format $format -query_hash_pairs [array get query_hash]]
+    ns_log Notice "im_rest_call_get: after im_rest_authenticate: auth_hash=$auth_hash_list"
+    array set auth_hash $auth_hash_list
+
     if {0 == [llength [array get auth_hash]]} { return [im_rest_error -format $format -http_status 401 -message "Not authenticated"] }
     set auth_user_id $auth_hash(user_id)
     set auth_method $auth_hash(method)
