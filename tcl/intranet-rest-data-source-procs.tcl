@@ -28,6 +28,9 @@ ad_proc im_rest_project_task_tree_action {
     set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
+    # Handle issues with "true" or "false" in milestone_p breaking the DB char(1) data-type
+    if {[info exists var_hash(milestone_p)]} { set var_hash(milestone_p) [string range $var_hash(milestone_p) 0 0] }
+
     # Ignore the root of the tree that might be send by the Sencha side
     set id ""
     if {[info exists var_hash(id)]} { set id $var_hash(id) }
@@ -40,9 +43,9 @@ ad_proc im_rest_project_task_tree_action {
     if {[info exists var_hash(id)] && "" != $var_hash(id)} { set project_id $var_hash(id) }
 
     switch $action {
-	update { im_rest_project_task_tree_update -pass $pass -project_id $project_id -var_hash_list $var_hash_list	}
-	create { im_rest_project_task_tree_create -pass $pass -project_id $project_id -var_hash_list $var_hash_list	}
-	delete { im_rest_project_task_tree_delete -pass $pass -project_id $project_id -var_hash_list $var_hash_list	}
+	update { im_rest_project_task_tree_update -pass $pass -project_id $project_id -var_hash_list [array get var_hash] }
+	create { im_rest_project_task_tree_create -pass $pass -project_id $project_id -var_hash_list [array get var_hash] }
+	delete { im_rest_project_task_tree_delete -pass $pass -project_id $project_id -var_hash_list [array get var_hash] }
 	default {
 	    doc_return 200 "text/plain" "{success:false, message: 'tree_action: found invalid action=$action'}"
 	}
