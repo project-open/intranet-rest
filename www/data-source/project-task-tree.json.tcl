@@ -120,7 +120,8 @@ set projects_sql "
 		(p.end_date - p.start_date)::interval as duration,
 		(select count(*) from im_projects child where child.parent_id = p.project_id) as num_children,
 		CASE WHEN bts.open_p = 'o' THEN 'true' ELSE 'false' END as expanded,
-		p.sort_order
+		p.sort_order,
+		round(p.percent_completed * 10.0) / 10.0 as percent_completed
 	from	im_projects main_p,
 		im_projects p
 		LEFT OUTER JOIN acs_objects o ON (p.project_id = o.object_id)
