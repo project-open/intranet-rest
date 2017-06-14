@@ -182,9 +182,9 @@ ad_proc -private im_rest_validate_list {
     db_foreach otypes $otypes_sql {
 	set operation "list"
 	set url [export_vars -base "$rest_url/$object_type" {auth_token {user_id $rest_user_id} {format json} }]
-	ns_log Notice "im_rest_validate_list: $object_type: Before ns_httpget $url"
-	set result [ns_httpget $url]
-	ns_log Notice "im_rest_validate_list: $object_type: After ns_httpget $url"
+	ns_log Notice "im_rest_validate_list: $object_type: Before im_httpget $url"
+	set result [im_httpget $url]
+	ns_log Notice "im_rest_validate_list: $object_type: After im_httpget $url"
 	set parsed_result [util::json::parse $result]
 	array unset result_hash
 	array set result_hash [lindex $parsed_result 1]
@@ -243,9 +243,9 @@ ad_proc -private im_rest_validate_projects {
     if {$validate_create_p} {
 	set operation "create"
 	set url [export_vars -base "$rest_url/im_project" {auth_token {user_id $rest_user_id} project_id {format json} }]
-	ns_log Notice "im_rest_validate_projects - create: Before ns_httpget $url"
-	set result [ns_httppost $url]
-	ns_log Notice "im_rest_validate_projects - create: After ns_httpget $url"
+	ns_log Notice "im_rest_validate_projects - create: Before im_httppost $url"
+	set result [im_httppost $url]
+	ns_log Notice "im_rest_validate_projects - create: After im_httppost $url"
 	set parsed_result [util::json::parse $result]
 	array unset result_hash
 	array set result_hash [lindex $parsed_result 1]
@@ -326,9 +326,9 @@ ad_proc -private im_rest_validate_projects {
 	if {$validate_list_p} {
 	    set operation "list"
 	    set url [export_vars -base "$rest_url/im_project" {auth_token {user_id $rest_user_id} project_id {format json} }]
-	    ns_log Notice "im_rest_validate_projects - list: Before ns_httpget $url"
-	    set result [ns_httpget $url]
-	    ns_log Notice "im_rest_validate_projects - list: After ns_httpget $url"
+	    ns_log Notice "im_rest_validate_projects - list: Before im_httpget $url"
+	    set result [im_httpget $url]
+	    ns_log Notice "im_rest_validate_projects - list: After im_httpget $url"
 	    set parsed_result [util::json::parse $result]
 	    array unset result_hash
 	    array set result_hash [lindex $parsed_result 1]
@@ -354,9 +354,9 @@ ad_proc -private im_rest_validate_projects {
 	if {$validate_read_p} {
 	    set operation "read"
 	    set url [export_vars -base "$rest_url/im_project/$project_id" {auth_token {user_id $rest_user_id} {format json} }]
-	    ns_log Notice "im_rest_validate_projects: Before ns_httpget $url"
-	    set result [ns_httpget $url]
-	    ns_log Notice "im_rest_validate_projects: After ns_httpget $url"
+	    ns_log Notice "im_rest_validate_projects: Before im_httpget $url"
+	    set result [im_httpget $url]
+	    ns_log Notice "im_rest_validate_projects: After im_httpget $url"
 	    set parsed_result [util::json::parse $result]
 	    array unset result_hash
 	    array set result_hash [lindex $parsed_result 1]
@@ -391,9 +391,9 @@ ad_proc -private im_rest_validate_projects {
 	    set url "$rest_url/im_project/$project_id"
 	    set url [export_vars -base "$rest_url/im_project/$project_id" {auth_token {user_id $rest_user_id} {format json} }]
 	    
-	    ns_log Notice "im_rest_validate_projects: Before ns_httppost $url"
-	    set result [ns_httppost $url "" ""]
-	    ns_log Notice "im_rest_validate_projects: After ns_httppost $url"
+	    ns_log Notice "im_rest_validate_projects: Before im_httppost $url"
+	    set result [im_httppost $url "" ""]
+	    ns_log Notice "im_rest_validate_projects: After im_httppost $url"
 	    ad_return_complaint 1 "<pre>$result</pre>"
 	    set parsed_result [util::json::parse $result]
 	    array unset result_hash
