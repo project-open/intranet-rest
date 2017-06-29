@@ -574,6 +574,9 @@ ad_proc -public im_rest_object_type_update_sql {
 	}
     }
 
+    # Audit the action
+    im_audit -action after_update -object_id $rest_oid
+
     ns_log Notice "im_rest_object_type_update_sql: returning"
     return
 }
