@@ -121,7 +121,7 @@ ad_proc im_rest_project_task_tree_delete {
     array set var_hash $var_hash_list
 
     if {"" == $project_id} {
-	doc_return 200 "text/plain" "{success:false, message: 'Delete failed because we did not find project_id in JSON data: $var_hash_list'}"
+	doc_return 200 "text/plain" "{success:false, message: \"Delete failed because we did not find project_id in JSON data: $var_hash_list\"}"
 	return
     }
     
@@ -130,16 +130,35 @@ ad_proc im_rest_project_task_tree_delete {
     if {"" eq $object_type} { return }; # Delete object before it really was created. Kind of OK...
     ${object_type}_permissions $current_user_id $project_id view read write admin
     if {!$admin} {
-	doc_return 200 "text/plain" "{success:false, message: 'No permissions to admin project_id=$project_id for user=$current_user_id'}"
+	doc_return 200 "text/plain" "{success:false, message: \"No permissions to admin project_id=$project_id for user=$current_user_id\"}"
 	ad_script_abort
+	return
     }
 
-    im_rest_delete_object \
-	-format "json" \
-	-rest_user_id $current_user_id \
-	-rest_otype $object_type \
-	-rest_oid $project_id \
-	-query_hash_pairs $var_hash_list
+    if {2 eq $pass} {
+
+	set parent_id [db_string task_parent_id "select parent_id from im_projects where project_id = :project_id" -default ""]
+	# Found the main project. We don't want to delete this project.
+	if {"" == $parent_id} { continue }
+	# Nuke including timesheet costs logged, task dependencies etc
+	ns_log Notice "im_rest_project_task_tree_delete: before 'im_project_nuke $project_id'"
+	set err_msg [im_project_nuke $project_id]
+
+	if {"" ne $err_msg} {
+	    doc_return 200 "text/plain" "{success:false, message: \"[im_quotejson $err_msg]\"}"
+	    return
+	}
+
+    }
+    
+# Old style - just generic object delete
+#    im_rest_delete_object \
+#	-format "json" \
+#	-rest_user_id $current_user_id \
+#	-rest_otype $object_type \
+#	-rest_oid $project_id \
+#	-query_hash_pairs $var_hash_list
+
 }
 
 
