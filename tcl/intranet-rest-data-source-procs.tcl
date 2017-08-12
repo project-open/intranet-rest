@@ -47,8 +47,9 @@ ad_proc im_rest_project_task_tree_action {
     set parent_id ""
     if {[info exists var_hash(parent_id)]} { set parent_id $var_hash(parent_id) }
     set parent_id_exists_p [db_string parent_exists "select count(*) from im_projects where project_id = :parent_id"]
-    if {![info exists var_hash(parent_id)]} { 
-	# Return 1 in order to tell action-script to repeat
+    ns_log Notice "im_rest_project_task_tree_action: parent_id=$parent_id, exists=$parent_id_exists_p, pass=$pass, var_hash_list=$var_hash_list"
+    if {"" ne $parent_id && !$parent_id_exists_p} { 
+	ns_log Notice "im_rest_project_task_tree_action: parent_id=$parent_id does not yet exist in the DB, looping:\npass=$pass, var_hash_list=$var_hash_list"
 	return 1
     }
 
