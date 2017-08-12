@@ -11,16 +11,15 @@
 #    {debug_p 0}
 #}
 
-set debug_p 0
 
 # ---------------------------------------------------------------
 # 
 # ---------------------------------------------------------------
 
-# Check that the user is logged in
 set current_user_id [auth::require_login]
-ns_log Notice "project-task-tree-action: query_hash_pairs=$query_hash_pairs"
+set debug_p 0
 
+ns_log Notice "project-task-tree-action: query_hash_pairs=$query_hash_pairs"
 array set var_hash $query_hash_pairs
 set action $var_hash(action)
 
@@ -55,12 +54,19 @@ if {[catch {
 	
 	foreach pass {1 2} {
 	    ns_log Notice "project-task-tree-action: pass=$pass, array=$json_array"
-	    foreach array_elem $json_array {
-		ns_log Notice "project-task-tree-action: pass=$pass, array_elem=$array_elem"
-		set obj [lindex $array_elem 0]
-		set json_list [lindex $array_elem 1]
-		ns_log Notice "project-task-tree-action: pass=$pass, decomposing array_elem: $obj=$json_list"
-		im_rest_project_task_tree_action -pass $pass -action $action -var_hash_list $json_list
+	    set repeat_p 1
+	    set cnt 0
+	    while {$repeat_p && $cnt < 100} {
+		set repeat_p 0
+		incr cnt
+		foreach array_elem $json_array {
+		    ns_log Notice "project-task-tree-action: pass=$pass, array_elem=$array_elem"
+		    set obj [lindex $array_elem 0]
+		    set json_list [lindex $array_elem 1]
+		    ns_log Notice "project-task-tree-action: pass=$pass, decomposing array_elem: $obj=$json_list"
+		    set not_finished_p [im_rest_project_task_tree_action -pass $pass -action $action -var_hash_list $json_list]
+		    if {1 eq $not_finished_p} { set repeat_p 1 }
+		}
 	    }
 	}
     }

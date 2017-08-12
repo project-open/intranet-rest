@@ -23,6 +23,7 @@ ad_proc im_rest_project_task_tree_action {
 } {
     Create, Update or Delete a task coming from TreeStore
     @param pass: 0:all actions, 1: create/update only, 2: dependencies only
+    @return 0 if everything OK, 1 if we need to repeat
 } {
     ns_log Notice "im_rest_project_task_tree_action: pass=$pass, var_hash_list=$var_hash_list"
     set current_user_id [ad_conn user_id]
@@ -36,18 +37,28 @@ ad_proc im_rest_project_task_tree_action {
     if {[info exists var_hash(id)]} { set id $var_hash(id) }
     if {"root" == $id} { return; }
 
-    # Get the project/task_id
+    # Check the project_id/task_id
     set project_id ""
     if {[info exists var_hash(project_id)] && "" != $var_hash(project_id)} { set project_id $var_hash(project_id) }
     if {[info exists var_hash(task_id)] && "" != $var_hash(task_id)} { set project_id $var_hash(task_id) }
     if {[info exists var_hash(id)] && "" != $var_hash(id)} { set project_id $var_hash(id) }
+
+    # Check if parent_id exists. All tasks should have a parent_id. Otherwise it's the main project.
+    set parent_id ""
+    if {[info exists var_hash(parent_id)]} { set parent_id $var_hash(parent_id) }
+    set parent_id_exists_p [db_string parent_exists "select count(*) from im_projects where project_id = :parent_id"]
+    if {![info exists var_hash(parent_id)]} { 
+	# Return 1 in order to tell action-script to repeat
+	return 1
+    }
 
     switch $action {
 	update { im_rest_project_task_tree_update -pass $pass -project_id $project_id -var_hash_list [array get var_hash] }
 	create { im_rest_project_task_tree_create -pass $pass -project_id $project_id -var_hash_list [array get var_hash] }
 	delete { im_rest_project_task_tree_delete -pass $pass -project_id $project_id -var_hash_list [array get var_hash] }
 	default {
-	    doc_return 200 "text/plain" "{success:false, message: 'tree_action: found invalid action=$action'}"
+	    doc_return 200 "text/plain" "{success:false, message: 'tree_action: found invalid action=[im_quotejson $action]'}"
+	    return
 	}
     }
     # The calling procedure will return a suitable JSON success message
@@ -66,7 +77,7 @@ ad_proc im_rest_project_task_tree_update {
     array set var_hash $var_hash_list
 
     if {"" == $project_id} {
-	doc_return 200 "text/plain" "{success:false, message: 'Update failed because we did not find project_id in JSON data: $var_hash_list'}"
+	doc_return 200 "text/plain" "{success:false, message: 'Did not find project_id in JSON data: [im_quotejson $var_hash_list]'}"
 	return
     }
 
@@ -83,7 +94,7 @@ ad_proc im_rest_project_task_tree_update {
     if {!$write} {
 	doc_return 200 "text/plain" "{success:false, message: 'User #$current_user_id ([im_name_from_user_id $current_user_id]) has not enough permissions<br>
         to modify task or project #$project_id ([acs_object_name $project_id])'}"
-	ad_script_abort
+	return
     }
 
     # Update the main project fields via a generic REST routine
@@ -121,7 +132,7 @@ ad_proc im_rest_project_task_tree_delete {
     array set var_hash $var_hash_list
 
     if {"" == $project_id} {
-	doc_return 200 "text/plain" "{success:false, message: \"Delete failed because we did not find project_id in JSON data: $var_hash_list\"}"
+	doc_return 200 "text/plain" "{success:false, message: \"Delete failed because we did not find project_id in JSON data: [im_quotejson $var_hash_list]\"}"
 	return
     }
     
@@ -131,7 +142,6 @@ ad_proc im_rest_project_task_tree_delete {
     ${object_type}_permissions $current_user_id $project_id view read write admin
     if {!$admin} {
 	doc_return 200 "text/plain" "{success:false, message: \"No permissions to admin project_id=$project_id for user=$current_user_id\"}"
-	ad_script_abort
 	return
     }
 
@@ -150,15 +160,6 @@ ad_proc im_rest_project_task_tree_delete {
 	}
 
     }
-    
-# Old style - just generic object delete
-#    im_rest_delete_object \
-#	-format "json" \
-#	-rest_user_id $current_user_id \
-#	-rest_otype $object_type \
-#	-rest_oid $project_id \
-#	-query_hash_pairs $var_hash_list
-
 }
 
 
@@ -177,22 +178,22 @@ ad_proc im_rest_project_task_tree_create {
 
     # No project_id!
     if {"" != $project_id && [db_string exists_p "select count(*) from im_projects where project_id=:project_id"]} {
-	doc_return 200 "text/plain" "{success:false, message: 'Create failed, object project_id=$project_id already exists. JSON data: $var_hash_list'}"
+	doc_return 200 "text/plain" "{success:false, message: 'Create failed, project_id=$project_id already exists. JSON data: [im_quotejson $var_hash_list]'}"
 	return
     }
 
     set parent_id ""
     if {[info exists var_hash(parent_id)]} { set parent_id $var_hash(parent_id) }
     if {"" == $parent_id} {
-	doc_return 200 "text/plain" "{success:false, message: 'Create failed, no parent_id specified for new task in post data: $var_hash_list'}"
-	ad_script_abort
+	doc_return 200 "text/plain" "{success:false, message: 'Create failed, no parent_id specified for new task in post data: [im_quotejson $var_hash_list]'}"
+	return
     }
     
     set parent_object_type [util_memoize [list db_string otype "select object_type from acs_objects where object_id = $parent_id"]]
     ${parent_object_type}_permissions $current_user_id $parent_id view read write admin
     if {!$write} {
 	doc_return 200 "text/plain" "{success:false, message: 'No permissions to write to parent_id=$parent_id for user=$current_user_id'}"
-	ad_script_abort
+	return
     }
 
     # ToDo: What does this call return, do we need to check the result?
