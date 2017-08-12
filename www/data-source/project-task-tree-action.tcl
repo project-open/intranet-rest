@@ -60,7 +60,7 @@ if {[catch {
 		set repeat_p 0
 		incr cnt
 		foreach array_elem $json_array {
-		    ns_log Notice "project-task-tree-action: pass=$pass, array_elem=$array_elem"
+		    ns_log Notice "project-task-tree-action: rep=$cnt, pass=$pass, array_elem=$array_elem"
 		    set obj [lindex $array_elem 0]
 		    set json_list [lindex $array_elem 1]
 		    ns_log Notice "project-task-tree-action: pass=$pass, decomposing array_elem: $obj=$json_list"
