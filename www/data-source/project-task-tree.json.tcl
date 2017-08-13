@@ -6,21 +6,28 @@ ad_page_contract {
     Returns a JSON tree structure suitable for batch-loading a project TreeStore
     @param project_id The project
     @author frank.bergmann@project-open.com
+    
+    @param node Passed by ExtJS to load sub-trees of a tree.
+                Normally not used, just in case of error.
 } {
     project_id:integer
     {debug_p 0}
+    {node ""}
 }
 
 
-ns_log Notice "project-task-tree.json: query_hash_pairs=$query_hash_pairs"
+set main_project_id $project_id
+set root_project_id $project_id
+if {"" ne $node && [string is integer $node]} { set root_project_id $node }
+ns_log Notice "project-task-tree.json: node=$node, main_project_id=$main_project_id, root_project_id=$root_project_id, query_hash_pairs=$query_hash_pairs"
 
 # --------------------------------------------
 # Security & Permissions
 #
 set current_user_id [auth::require_login]
-im_project_permissions $current_user_id $project_id view read write admin
+im_project_permissions $current_user_id $main_project_id view read write admin
 if {!$read} {
-    im_rest_error -format "json" -http_status 403 -message "You (user #$current_user_id) have no permissions to read project #$project_id"
+    im_rest_error -format "json" -http_status 403 -message "You (user #$current_user_id) have no permissions to read project #$main_project_id"
     ad_script_abort
 }
 
@@ -36,7 +43,7 @@ set task_dependencies_sql "
 		im_timesheet_task_dependencies ttd
 	where	p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey) and
 		(ttd.task_id_one = p.project_id OR ttd.task_id_two = p.project_id) and
-		main_p.project_id = :project_id
+		main_p.project_id = :main_project_id
 "
 db_foreach task_dependencies $task_dependencies_sql {
     set pred [list]
@@ -49,7 +56,7 @@ db_foreach task_dependencies $task_dependencies_sql {
 
 
 # --------------------------------------------
-# Assignees: Collect before the main loop
+# Assignees: Collect all before the main loop
 #
 set assignee_sql "
 	select	r.*,
@@ -64,7 +71,7 @@ set assignee_sql "
 		im_biz_object_members bom 
 	where	r.rel_id = bom.rel_id and
 		r.object_id_one = p.project_id and
-		main_p.project_id = :project_id and
+		main_p.project_id = :main_project_id and
 		p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey)
 	order by
 		user_initials
@@ -78,24 +85,26 @@ db_foreach assignee $assignee_sql {
 
 # --------------------------------------------
 # Get the list of projects that should not be displayed
+# Currently these are projects marked as "deleted".
+# We now also want to show "normal projects" / subprojects.
 #
 set non_display_projects_sql "
 	select	distinct sub_p.project_id			-- Select all sup-projects of somehow non-displays
 	from	im_projects super_p,
 		im_projects sub_p
 	where	sub_p.tree_sortkey between super_p.tree_sortkey and tree_right(super_p.tree_sortkey) and
-		sub_p.project_id != :project_id and
+		sub_p.project_id != :main_project_id and
 		super_p.project_id in (
 			-- The list of projects that should not be displayed
 			select	p.project_id
 			from	im_projects p,
 				acs_objects o,
 				im_projects main_p
-			where	main_p.project_id = :project_id and
+			where	main_p.project_id = :main_project_id and
 				main_p.project_id != p.project_id and
 				p.project_id = o.object_id and
 				p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey) and
-				o.object_type = 'im_project'
+				p.project_status_id = [im_project_status_deleted]
 		)
 "
 # set non_display_projects [db_list non_display_projects $non_display_projects_sql]
@@ -107,9 +116,14 @@ lappend non_display_projects 0
 
 # --------------------------------------------
 # Get all the variables valid for gantt task
+#
 set valid_vars [util_memoize [list im_rest_object_type_columns -deref_p 0 -rest_otype "im_timesheet_task"]]
 set valid_vars [lsort -unique $valid_vars]
 
+
+# --------------------------------------------
+# Main hierarchical SQL
+#
 set projects_sql "
 	select	o.*,
 		bo.*,
@@ -133,7 +147,7 @@ set projects_sql "
 			bts.page_url = 'default' and
 			bts.user_id = :current_user_id
 		)
-	where	main_p.project_id = :project_id and
+	where	main_p.project_id = :root_project_id and
 		p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey) and
 		p.project_id not in ([join $non_display_projects ","])
 	order by
