@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<message_catalog package_key="intranet-rest" locale="pl_PL" charset="utf-8">
+
+  <msg key="REST_API">REST API</msg>
+  <msg key="REST_Category_Type">REST Category Type</msg>
+  <msg key="REST_Group_Memberships">REST Group Memberships</msg>
+  <msg key="REST_My_Hours">REST My Hours</msg>
+  <msg key="REST_My_Timesheet_Projects">REST My Timesheet Project</msg>
+  <msg key="REST_My_Timesheet_Projects_and_Hours">REST My Timesheet Projects and Hours</msg>
+  <msg key="REST_Object_Permissions">REST Object Permissions</msg>
+  <msg key="REST_System_Reports">REST System Reports</msg>
+</message_catalog>
