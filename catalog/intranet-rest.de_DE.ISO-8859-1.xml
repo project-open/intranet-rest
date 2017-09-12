@@ -2,11 +2,11 @@
 <message_catalog package_key="intranet-rest" locale="de_DE" charset="ISO-8859-1">
 
   <msg key="REST_API">REST API</msg>
-  <msg key="REST_Category_Type">REST Category Type</msg>
-  <msg key="REST_Group_Memberships">REST Group Memberships</msg>
-  <msg key="REST_My_Hours">REST My Hours</msg>
-  <msg key="REST_My_Timesheet_Projects">REST My Timesheet Project</msg>
-  <msg key="REST_My_Timesheet_Projects_and_Hours">REST My Timesheet Projects and Hours</msg>
-  <msg key="REST_Object_Permissions">REST Object Permissions</msg>
+  <msg key="REST_Category_Type">REST Kategorie Typ</msg>
+  <msg key="REST_Group_Memberships">REST - Gruppenmitgliedschaft</msg>
+  <msg key="REST_My_Hours">REST - Meine Stunden</msg>
+  <msg key="REST_My_Timesheet_Projects">REST - Meine Projekte und Aufgaben</msg>
+  <msg key="REST_My_Timesheet_Projects_and_Hours">REST - Meine Projekte und Stunden</msg>
+  <msg key="REST_Object_Permissions">REST - Berechtigungen für Objekte</msg>
   <msg key="REST_System_Reports">REST-Systemberichte</msg>
 </message_catalog>
