@@ -61,7 +61,7 @@ db_foreach task_dependencies $task_dependencies_sql {
 set assignee_sql "
 	select	r.*,
 		bom.*,
-		to_char(coalesce(bom.percentage,0), '990.0') as percent_pretty,
+		coalesce(bom.percentage,0) as percent_pretty,
 		im_name_from_user_id(r.object_id_two) as user_name,
 		im_email_from_user_id(r.object_id_two) as user_email,
 		im_initials_from_user_id(r.object_id_two) as user_initials
@@ -82,6 +82,32 @@ db_foreach assignee $assignee_sql {
     lappend assignees "{id:$rel_id, user_id:$object_id_two, percent:$percent_pretty}"
     set assignee_hash($object_id_one) $assignees
 }
+
+# --------------------------------------------
+# Invoices: Collect before main loop
+#
+set invoice_sql "
+	select	p.project_id as child_project_id,
+		c.*,
+		c.effective_date::date as effective_date_date
+	from	im_projects main_p,
+		im_projects p,
+		acs_rels r,
+		im_costs c
+	where	main_p.project_id = :main_project_id and
+		p.tree_sortkey between main_p.tree_sortkey and tree_right(main_p.tree_sortkey) and
+		r.object_id_one = p.project_id and
+		r.object_id_two = c.cost_id
+	order by c.cost_id
+"
+db_foreach invoice $invoice_sql {
+    set invoices [list]
+    if {[info exists invoice_hash($child_project_id)]} { set invoices $invoice_hash($child_project_id) }
+    lappend invoices "{id:$cost_id, effective_date: '$effective_date_date', cost_name:'[im_quotejson $cost_name]', cost_type_id:$cost_type_id, cost_type:'[im_category_from_id $cost_type_id]'}"
+    set invoice_hash($child_project_id) $invoices
+}
+# ad_return_complaint 1 [array get invoice_hash]
+
 
 # --------------------------------------------
 # Get the list of projects that should not be displayed
@@ -218,12 +244,13 @@ template::multirow foreach task_multirow {
 
     set predecessor_tasks [list]
     set assignees [list]
+    set invoices [list]
     if {[info exists predecessor_hash($project_id)]} { set predecessor_tasks $predecessor_hash($project_id) }
     if {[info exists assignee_hash($project_id)]} { set assignees $assignee_hash($project_id) }
+    if {[info exists invoice_hash($project_id)]} { set invoices $invoice_hash($project_id) }
 
     set quoted_char_map {"\n" "\\n" "\r" "\\r" "\"" "\\\"" "\\" "\\\\"}
     set quoted_project_name [string map $quoted_char_map $project_name]
-
 
     set type ""
     switch $project_type_id {
@@ -246,6 +273,7 @@ ${indent}\ttext:\"$quoted_project_name\",
 ${indent}\ticonCls:\"icon-$type\",
 ${indent}\tpredecessors:\[[join $predecessor_tasks ", "]\],
 ${indent}\tassignees:\[[join $assignees ", "]\],
+${indent}\tinvoices:\[[join $invoices ", "]\],
 ${indent}\texpanded:$expanded,
 "
     foreach var $valid_vars {
