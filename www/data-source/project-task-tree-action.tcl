@@ -3,14 +3,7 @@
 # Copyright (C) 2013 ]project-open[
 
 
-#ad_page_contract {
-#    Recieves a POST request from Sencha for an update
-#    of in-line editing a TreeGrid
-#    @author frank.bergmann@project-open.com
-#} {
-#    {debug_p 0}
-#}
-
+# Receives the URL parameters in the variable query_hash_pairs
 
 # ---------------------------------------------------------------
 # 
@@ -22,6 +15,10 @@ set debug_p 0
 ns_log Notice "project-task-tree-action: query_hash_pairs=$query_hash_pairs"
 array set var_hash $query_hash_pairs
 set action $var_hash(action)
+set project_id $var_hash(project_id)
+
+ns_log Notice "project-task-tree-action: project_id=$project_id, action=$action"
+
 
 # Default values for JSON return message
 set success "true"
@@ -78,3 +75,12 @@ if {[catch {
     set message [im_rest_error -format json -http_status 404 -message "Internal Error: [ad_print_stack_trace]"]
 
 }
+
+# Advance %completed.
+# This is actually duplicate and possibly inconsistent, because
+# because the JavaScript GanttEditor already calculated the
+# percentage. Let's hope both number are equal...
+#
+# However, we need to call this in order to update the main
+# project. => Maybe limit to that in the call?
+im_timesheet_project_advance $project_id
