@@ -21,7 +21,6 @@ if {[catch {
 }
 
 # Create a global cache for im_rest entries
-# The cache is bound by global timeout of 1 hour currently.
-ns_cache create im_rest -timeout 3600
-
+# The cache is bound by global timeout of 12 hours currently.
+ns_cache create im_rest -timeout [expr 12 * 3600]
 
