@@ -1215,22 +1215,14 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
     }
 
     if {[catch {
-	set rest_oid [db_string item_id "select nextval('im_invoice_items_seq')"]
-	db_dml new_invoice_item "
-		insert into im_invoice_items (
-			item_id,
-			item_name,
-			invoice_id,
-			item_uom_id,
-			sort_order
-		) values (
-			:rest_oid,
-			:item_name,
-			:invoice_id,
-			:item_uom_id,
-			:sort_order
-		)
-	"
+
+	set rest_oid [db_string new_invoice_item "select im_invoice_item__new (
+			null, 'im_invoice_item', now(), :current_user_id, '[ad_conn peeraddr]', null,
+			:item_name, :invoice_id, :sort_order,
+			0, [im_uom_units], 0, 'EUR',
+			[im_invoice_item_type_default], [im_invoice_item_status_active]
+	)"]
+
     } err_msg]} {
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
