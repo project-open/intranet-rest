@@ -13,17 +13,15 @@
         <summary>Expose the ]project-open[ data-model as a Web Service in REST style</summary>
         <release-date>2016-11-15</release-date>
         <vendor url="http://www.project-open.com/">]project-open[</vendor>
+	<license>]project-open[ Free License (FL)</license>
         <description format="text/plain">Provides read and write access to all important ]po[ objects.</description>
-
         <provides url="intranet-rest" version="4.1.0.0.0"/>
         <requires url="intranet-core" version="4.0.0.0.0"/>
         <requires url="intranet-reporting" version="4.0.0.0.0"/>
-
         <callbacks>
         </callbacks>
         <parameters>
         <!-- No version parameters -->
         </parameters>
-
     </version>
 </package>
