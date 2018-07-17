@@ -161,7 +161,8 @@ set projects_sql "
 		(select count(*) from im_projects child where child.parent_id = p.project_id) as num_children,
 		CASE WHEN bts.open_p = 'o' THEN 'true' ELSE 'false' END as expanded,
 		p.sort_order,
-		round(p.percent_completed * 10.0) / 10.0 as percent_completed
+		round(p.percent_completed * 10.0) / 10.0 as percent_completed,
+		coalesce(p.reported_hours_cache, 0.0) as logged_hours
 	from	im_projects main_p,
 		im_projects p
 		LEFT OUTER JOIN acs_objects o ON (p.project_id = o.object_id)
@@ -274,6 +275,7 @@ ${indent}\ticonCls:\"icon-$type\",
 ${indent}\tpredecessors:\[[join $predecessor_tasks ", "]\],
 ${indent}\tassignees:\[[join $assignees ", "]\],
 ${indent}\tinvoices:\[[join $invoices ", "]\],
+${indent}\tlogged_hours:$logged_hours,
 ${indent}\texpanded:$expanded,
 "
     foreach var $valid_vars {
