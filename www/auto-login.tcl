@@ -44,7 +44,7 @@ switch $format {
 \"user_id\": $user_id,
 \"user_name\": \"[im_quotejson $name]\",
 \"username\": \"[im_quotejson $username]\",
-\"token\": \"[im_quotejson $auto_token]\",
+\"token\": \"[im_quotejson $auto_login]\",
 }"
 	doc_return 200 "application/json" $result
 	ad_script_abort
