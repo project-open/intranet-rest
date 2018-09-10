@@ -10,7 +10,6 @@ ad_page_contract {
     
     @author frank.bergmann@project-open.com
 } {
-
 }
 
 # Parameters passed aside of page_contract
@@ -22,7 +21,9 @@ ad_page_contract {
 #    [list object_id $object_id] \
 #    [list query_hash $query_hash] \
 
-if {![info exists user_id]} { set user_id 0 }
+set current_user_id [auth::require_login]
+
+if {![info exists user_id] || "" eq $user_id} { set user_id $current_user_id }
 if {![info exists format]} { set format "html" }
 
 set auto_login [im_generate_auto_login -user_id $user_id]
