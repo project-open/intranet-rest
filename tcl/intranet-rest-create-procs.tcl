@@ -2099,7 +2099,8 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
 	if {"" == $object_type} {
 	    return [im_rest_error -format $format -http_status 403 -message "Could not find preference_object_id=$preference_object_id."] 
 	}
-	set perm_cmd "${object_type}_permissions \$user_id \$object_id view_p read_p write_p admin_p"
+	set perm_cmd "${object_type}_permissions \$rest_user_id \$object_id view_p read_p write_p admin_p"
+	ns_log Notice "im_rest_post_object_type_im_sencha_preference: perm_cmd=$perm_cmd"
 	eval $perm_cmd
 	if {!$write_p} {
 	    return [im_rest_error -format $format -http_status 403 -message "You don not have write permissions on object_id=$preference_object_id"] 
