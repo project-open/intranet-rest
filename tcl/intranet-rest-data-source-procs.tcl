@@ -93,8 +93,7 @@ ad_proc im_rest_project_task_tree_update {
 
     ${object_type}_permissions $current_user_id $project_id view read write admin
     if {!$write} {
-	doc_return 200 "text/plain" "{success:false, message: 'User #$current_user_id ([im_name_from_user_id $current_user_id]) has not enough permissions<br>
-        to modify task or project #$project_id ([acs_object_name $project_id])'}"
+	doc_return 200 "text/plain" "{success:false, message: 'User #$current_user_id ([im_name_from_user_id $current_user_id]) has not enough permissions to modify task or project #$project_id ([acs_object_name $project_id])'}"
 	return
     }
 
