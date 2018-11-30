@@ -562,7 +562,7 @@ ad_proc -public im_rest_object_type_update_sql {
 
     ns_log Notice "im_rest_object_type_update_sql: [array get sql_hash]"
 
-    foreach table [array names sql_hash] {
+    foreach table [lsort [array names sql_hash]] {
 	ns_log Notice "im_rest_object_type_update_sql: Going to update table '$table'"
 	set sqls $sql_hash($table)
 	set update_sql "update $table set [join $sqls ", "] where $index_column($table) = :rest_oid"
