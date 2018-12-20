@@ -26,8 +26,7 @@ if {![info exists query_hash(widget_id)]} {
 	    ad_script_abort
 	}
 	xml {
-	    im_rest_error -http_status 406 -message "Parameter 'widget_id' missing, please specify"
-	    return
+	    return [im_rest_error -http_status 406 -message "Parameter 'widget_id' missing, please specify"]
 	}
     }
 }
@@ -40,8 +39,7 @@ if {0 == $user_id} {
 	    ad_script_abort
 	}
 	xml {
-	    im_rest_error -http_status 401 -message "Not authenticated"
-	    return
+	    return [im_rest_error -http_status 401 -message "Not authenticated"]
 	}
     }
 }
@@ -63,8 +61,7 @@ if {![info exists widget_name]} {
 	    ad_script_abort
 	}
 	xml {
-	    im_rest_error -http_status 406 -message "Invalid 'widget_id'"
-	    return
+	    return [im_rest_error -http_status 406 -message "Invalid 'widget_id'"]
 	}
     }
 }
@@ -89,8 +86,7 @@ switch $tcl_widget {
 		ad_script_abort
 	    }
 	    xml {
-		im_rest_error -http_status 406 -message $message
-		return
+		return [im_rest_error -http_status 406 -message $message]
 	    }
 	}
     }

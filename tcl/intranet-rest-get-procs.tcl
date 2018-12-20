@@ -63,7 +63,7 @@ ad_proc -private im_rest_get_object_type {
     set table_name [lindex $otype_info 0 0]
     set id_column [lindex $otype_info 0 1]
     if {"" == $table_name} {
-	im_rest_error -format $org_format -http_status 500 -message "Invalid DynField configuration: Object type '$rest_otype' doesn't have a table_name specified in table acs_object_types."
+	return [im_rest_error -format $org_format -http_status 500 -message "Invalid DynField configuration: Object type '$rest_otype' doesn't have a table_name specified in table acs_object_types."]
     }
     # Deal with ugly situation that usre_id is defined multiple times for object_type=user
     if {"users" == $table_name} { set id_column "person_id" }
@@ -169,8 +169,7 @@ ad_proc -private im_rest_get_object_type {
     foreach where_clause $where_clause_list {
 	set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
 	if {!$valid_sql_where} {
-	    im_rest_error -format $org_format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
-	    return
+	    return [im_rest_error -format $org_format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"]
 	}
     }
 
@@ -240,12 +239,10 @@ ad_proc -private im_rest_get_object_type {
 
 		# Write out error message only if the user has specified a single object to check. Otherwise just skip.
 		if {!$read_p && "" != $org_rest_oid} {
-		    im_rest_error -format $org_format -http_status 403 -message "User #$rest_user_id does not have read access to object #$org_rest_oid"
-		    return
+		    return [im_rest_error -format $org_format -http_status 403 -message "User #$rest_user_id does not have read access to object #$org_rest_oid"]
 		}
 	    } err_msg]} {
-		im_rest_error -format $org_format -http_status 500 -message "Internal error: $err_msg"
-		return
+		return [im_rest_error -format $org_format -http_status 500 -message "Internal error: $err_msg"]
 	    }
 	}
 	if {!$read_p} { continue }
@@ -325,8 +322,7 @@ ad_proc -private im_rest_get_im_invoice_items {
     # Check that the query is a valid SQL where clause
     set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
     if {!$valid_sql_where} {
-	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
-	return
+	return [im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"]
     }
     if {"" != $where_clause} { set where_clause "and $where_clause" }
 
@@ -448,8 +444,7 @@ ad_proc -private im_rest_get_im_hours {
     # Check that the query is a valid SQL where clause
     set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
     if {!$valid_sql_where} {
-	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
-	return
+	return [im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"]
     }
     if {"" != $where_clause} { set where_clause "and $where_clause" }
 
@@ -574,8 +569,7 @@ ad_proc -private im_rest_get_im_hour_intervals {
     # Check that the query is a valid SQL where clause
     set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
     if {!$valid_sql_where} {
-	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
-	return
+	return [im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"]
     }
     if {"" != $where_clause} { set where_clause "and $where_clause" }
 
@@ -687,8 +681,7 @@ ad_proc -private im_rest_get_im_timesheet_task_dependencies {
     # Check that the query is a valid SQL where clause
     set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
     if {!$valid_sql_where} {
-	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
-	return
+	return [im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"]
     }
     if {"" != $where_clause} { set where_clause "and $where_clause" }
 
@@ -810,8 +803,7 @@ ad_proc -private im_rest_get_im_categories {
     # Check that the query is a valid SQL where clause
     set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
     if {!$valid_sql_where} {
-	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
-	return
+	return [im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"]
     }
     if {"" != $where_clause} { set where_clause "and $where_clause" }
 
@@ -923,8 +915,7 @@ ad_proc -private im_rest_get_im_dynfield_attributes {
     # Check that the query is a valid SQL where clause
     set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
     if {!$valid_sql_where} {
-	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
-	return
+	return [im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"]
     }
     if {"" != $where_clause} { set where_clause "and $where_clause" }
 
@@ -1047,8 +1038,7 @@ ad_proc -private im_rest_get_im_indicator_result_interval {
     set valid_sql_where [im_rest_valid_sql -string $where_clause -variables $valid_vars]
     
     if {!$valid_sql_where} {
-	im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"
-	return
+	return [im_rest_error -format $format -http_status 403 -message "The specified query is not a valid SQL where clause: '$where_clause'"]
     }
     if {"" != $where_clause} { set where_clause "and $where_clause" }
     

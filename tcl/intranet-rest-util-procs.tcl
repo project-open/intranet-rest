@@ -594,7 +594,7 @@ ad_proc -public im_rest_error {
 } {
     Returns a suitable REST error message
 } {
-    ns_log Notice "im_rest_error: http_status=$http_status, format=$format, message=$message"
+    ns_log Error "im_rest_error: http_status=$http_status, format=$format, message=$message"
     set url [im_url_with_query]
 
     switch $http_status {

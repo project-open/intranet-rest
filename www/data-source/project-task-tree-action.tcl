@@ -72,7 +72,8 @@ if {[catch {
 
     ns_log Error "project-task-tree-action: Reporting back error: [ad_print_stack_trace]"
     set success "false"
-    set message [im_rest_error -format json -http_status 404 -message "Internal Error: [ad_print_stack_trace]"]
+    set message $err_msg
+    im_rest_error -format json -http_status 404 -message "Internal Error: [ad_print_stack_trace]"
 
 }
 
@@ -84,3 +85,6 @@ if {[catch {
 # However, we need to call this in order to update the main
 # project. => Maybe limit to that in the call?
 im_timesheet_project_advance $project_id
+
+# ToDo: Return JSON??
+

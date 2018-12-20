@@ -51,7 +51,7 @@ ad_proc -private im_rest_post_object_type {
 
 	# Extract the object's id from the return array and write into object_id in case a client needs the info
 	if {![info exists hash_array(rest_oid)]} {
-	    # Probably after an im_rest_error
+	    # Probably after a rest_error
 	    ns_log Error "im_rest_post_object_type: Didn't find hash_array(rest_oid): This should never happened"
 	}
 	set rest_oid $hash_array(rest_oid)
@@ -87,8 +87,7 @@ ad_proc -private im_rest_post_object_type {
 
     } else {
 	ns_log Notice "im_rest_post_object_type: Create for '$rest_otype' not implemented yet"
-	im_rest_error -format $format -http_status 404 -message "Object creation for object type '$rest_otype' not implemented yet."
-	return
+	return [im_rest_error -format $format -http_status 404 -message "Object creation for object type '$rest_otype' not implemented yet."]
     }
     return
 }
@@ -121,8 +120,7 @@ ad_proc -private im_rest_post_object {
     set write_p [im_object_permission -object_id $rest_otype_id -user_id $rest_user_id -privilege "write"]
     if {!$write_p} {
 	set msg "im_rest_post_object: User #$rest_user_id has no 'write' permission in general on object type '$rest_otype' - please check your REST permissions"
-	im_rest_error -format $format -http_status 403 -message $msg
-	return
+	return [im_rest_error -format $format -http_status 403 -message $msg]
     }
 
     # Check if there is an object type specific permission checker
@@ -136,8 +134,7 @@ ad_proc -private im_rest_post_object {
 	ns_log Notice "im_rest_post_object: Did not find permission proc ${rest_otype}_permissions - POST permissions denied"
     }
     if {!$write_p} {
-	im_rest_error -format $format -http_status 403 -message "User #$rest_user_id has no write permission on object #$rest_oid"
-	return
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id has no write permission on object #$rest_oid"]
     }
 
     # Check if there is a customized version of this post handler
@@ -393,8 +390,7 @@ ad_proc -private im_rest_delete_object {
 	}
     }
     if {!$admin_p} {
-	im_rest_error -format $format -http_status 403 -message "User #$rest_user_id has no 'admin' permission to perform DELETE on object #$rest_oid"
-	return
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id has no 'admin' permission to perform DELETE on object #$rest_oid"]
     }
     
     # Deal with certain subtypes
@@ -442,8 +438,7 @@ ad_proc -private im_rest_delete_object {
 
     # Try to destruct the object
     if {!$destroyed_p} {
-	im_rest_error -format $format -http_status 404 -message "DELETE for object #$rest_oid of type \"$rest_otype\" created errors: $destroyed_err_msg"
-	return
+	return [im_rest_error -format $format -http_status 404 -message "DELETE for object #$rest_oid of type \"$rest_otype\" created errors: $destroyed_err_msg"]
     }
 
     # The delete was successful - return a suitable message.
