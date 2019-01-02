@@ -29,8 +29,9 @@ ad_proc im_rest_project_task_tree_action {
     set current_user_id [ad_conn user_id]
     array set var_hash $var_hash_list
 
-    # Handle issues with "true" or "false" in milestone_p breaking the DB char(1) data-type
+    # Handle issues with "true" or "false" in milestone_p and effort_driven_p breaking the DB char(1) data-type
     if {[info exists var_hash(milestone_p)]} { set var_hash(milestone_p) [string range $var_hash(milestone_p) 0 0] }
+    if {[info exists var_hash(effort_driven_p)]} { set var_hash(effort_driven_p) [string range $var_hash(effort_driven_p) 0 0] }
 
     # Ignore the root of the tree that might be send by the Sencha side
     set id ""
