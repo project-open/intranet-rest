@@ -31,6 +31,10 @@ if {!$read} {
     ad_script_abort
 }
 
+# 9722 = 'Fixed Work' is the default effort_driven_type
+set default_effort_driven_type_id [parameter::get_from_package_key -package_key "intranet-ganttproject" -parameter "DefaultEffortDrivenTypeId" -default "9722"]
+
+
 
 # --------------------------------------------
 # Task dependencies: Collect before the main loop
@@ -267,6 +271,9 @@ template::multirow foreach task_multirow {
     if {[im_category_is_a $project_type_id [im_project_type_gantt]]} { set type "project" }
     if {"t" eq $milestone_p} { set type "milestone" }
     # ToDo: Deal with empty type
+
+    # Fixed Work, fixed duration or Fixed units?
+    if {"" eq $effort_driven_type_id} { set effort_driven_type_id $default_effort_driven_type_id }
     
     append task_json "${indent}\{
 ${indent}\tid:$project_id,
