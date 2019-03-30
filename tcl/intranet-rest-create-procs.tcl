@@ -285,12 +285,6 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 } {
     ns_log Notice "im_rest_post_object_type_$rest_otype: rest_user_id=$rest_user_id"
 
-    # Permissions
-    set add_p [im_permission $rest_user_id "add_timesheet_tasks"]
-    if {!$add_p} {
-	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
-    }
-    
     # Store the values into local variables
     set project_nr ""
     set project_status_id ""
@@ -328,6 +322,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 	ns_log Notice "im_rest_post_object_type_$rest_otype: key=$key, value=$value"
 	set $key $value
     }
+
 
     # Create default values if not yet set
     if {"" == $material_id} {
@@ -1593,7 +1588,7 @@ ad_proc -private im_rest_post_object_type_im_note {
     # Permissions
     set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
-	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create notes"] 
     }
 
     set creation_user $rest_user_id
@@ -1677,7 +1672,7 @@ ad_proc -private im_rest_post_object_type_membership_rel {
     # Permissions
     set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
-	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create membership rels"] 
     }
 
 
@@ -1830,7 +1825,7 @@ ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
     # Permissions
     set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
-	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create ticket-ticket rels"] 
     }
 
     # Store values into local variables
@@ -1913,7 +1908,7 @@ ad_proc -private im_rest_post_object_type_im_key_account_rel {
     # Permissions
     set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
-	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create key account rels"] 
     }
 
     
@@ -1997,7 +1992,7 @@ ad_proc -private im_rest_post_object_type_im_company_employee_rel {
     # Permissions
     set add_p [im_permission $rest_user_id "add_projects"]
     if {!$add_p} {
-	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create projects"] 
+	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create company-employee rels"] 
     }
 
 
