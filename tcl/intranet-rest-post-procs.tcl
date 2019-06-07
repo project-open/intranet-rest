@@ -77,7 +77,7 @@ ad_proc -private im_rest_post_object_type {
 		}
 		
 		set data "\[{[join $data_list ", "]}\]"
-		set result "{\"success\": \"true\",\"message\": \"Object created\",\"data\": $data}"
+		set result "{\"success\": true,\"message\": \"Object created\",\"data\": $data}"
 		doc_return 200 "application/json" $result
 	    }
 	    default {
@@ -195,7 +195,7 @@ ad_proc -private im_rest_post_object {
 	    }
 
 	    set data "\[{[join $data_list ", "]}\]"
-	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
+	    set result "{\"success\": true,\"message\": \"Object updated\",\"data\": $data}"
 	    doc_return 200 "application/json" $result
 	}
     }
@@ -279,7 +279,7 @@ ad_proc -private im_rest_post_object_im_hour {
 	    }
 
 	    set data "\[{[join $data_list ", "]}\]"
-	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
+	    set result "{\"success\": true,\"message\": \"Object updated\",\"data\": $data}"
 	    doc_return 200 "application/json" $result
 	}
     }
@@ -356,7 +356,7 @@ ad_proc -private im_rest_post_object_im_hour_interval {
 	    }
 
 	    set data "\[{[join $data_list ", "]}\]"
-	    set result "{\"success\": \"true\",\"message\": \"Object updated\",\"data\": $data}"
+	    set result "{\"success\": true,\"message\": \"Object updated\",\"data\": $data}"
 	    doc_return 200 "application/json" $result
 	}
     }
@@ -453,7 +453,7 @@ ad_proc -private im_rest_delete_object {
 	    "
 	}
 	json {
-	    set result "{\"success\": \"true\",\"message\": \"Object deleted\"}"
+	    set result "{\"success\": true,\"message\": \"Object deleted\"}"
 	    doc_return 200 "application/json" $result
 	}
     }

@@ -1,1 +1,1 @@
-{success:@success@, message: '@message@'}
+{"success": "@success@", "message": "@message@"}

@@ -28,5 +28,6 @@ ns_log Notice "/intranet-rest/data-source/domain-proxy.tcl: url=$url"
 if {[catch {
     set json [im_httpget $url]
 } err_msg]} {
-    set json "{'success': false, 'message': 'Error message: $err_msg'}"
+    set json "{\"success\": false, \"message\": \"Error message: $err_msg\"}"
 }
+

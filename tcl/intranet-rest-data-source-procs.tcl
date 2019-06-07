@@ -60,11 +60,11 @@ ad_proc im_rest_project_task_tree_action {
 	delete { im_rest_project_task_tree_delete -pass $pass -project_id $project_id -var_hash_list [array get var_hash] }
 	default {
 	    ns_log Error "im_rest_project_task_tree_action: tree_action: found invalid action=$action"
-	    doc_return 400 "text/plain" "{success:false, message: 'tree_action: found invalid action=[im_quotejson $action]'}"
+	    doc_return 400 "text/plain" "{\"success\": false, \"message\": \"tree_action: found invalid action=[im_quotejson $action]\"}"
 	    return
 	}
     }
-    # The calling procedure will return a suitable JSON success message
+    # The calling procedure will return a suitable JSON message
 }
 
 ad_proc im_rest_project_task_tree_update {
@@ -81,7 +81,7 @@ ad_proc im_rest_project_task_tree_update {
 
     if {"" == $project_id} {
 	ns_log Error "im_rest_project_task_tree_update: Did not find project_id in JSON data: $var_hash_list"
-	doc_return 400 "text/plain" "{success:false, message: 'Did not find project_id in JSON data: [im_quotejson $var_hash_list]'}"
+	doc_return 400 "text/plain" "{\"success\": false, \"message\": \"Did not find project_id in JSON data: [im_quotejson $var_hash_list]\"}"
 	return
     }
 
@@ -98,7 +98,7 @@ ad_proc im_rest_project_task_tree_update {
     if {!$write} {
 	ns_log Error "im_rest_project_task_tree_update: No write permission for user #$current_user_id ([im_name_from_user_id $current_user_id]) \
             on task or project #$project_id ([acs_object_name $project_id])"
-	doc_return 401 "text/plain" "{success:false, message: 'User #$current_user_id ([im_name_from_user_id $current_user_id]) has not enough permissions to modify $object_type #$project_id ([acs_object_name $project_id])'}"
+	doc_return 401 "text/plain" "{\"success\": false, \"message\": \"User #$current_user_id ([im_name_from_user_id $current_user_id]) has not enough permissions to modify $object_type #$project_id ([acs_object_name $project_id])\"}"
 	return
     }
 
@@ -138,7 +138,7 @@ ad_proc im_rest_project_task_tree_delete {
 
     if {"" == $project_id} {
 	ns_log Error "im_rest_project_task_tree_delete: Delete failed because we did not find project_id in JSON data: $var_hash_list"
-	doc_return 400 "text/plain" "{success:false, message: \"Delete failed because we did not find project_id in JSON data: [im_quotejson $var_hash_list]\"}"
+	doc_return 400 "text/plain" "{\"success\": false, \"message\": \"Delete failed because we did not find project_id in JSON data: [im_quotejson $var_hash_list]\"}"
 	return
     }
     
@@ -148,7 +148,7 @@ ad_proc im_rest_project_task_tree_delete {
     ${object_type}_permissions $current_user_id $project_id view read write admin
     if {!$admin} {
 	ns_log Error "im_rest_project_task_tree_delete: No permissions to admin project_id=$project_id for user=$current_user_id"
-	doc_return 401 "text/plain" "{success:false, message: \"No permissions to admin project_id=$project_id for user=$current_user_id\"}"
+	doc_return 401 "text/plain" "{\"success\": false, \"message\": \"No permissions to admin project_id=$project_id for user=$current_user_id\"}"
 	return
     }
 
@@ -162,7 +162,7 @@ ad_proc im_rest_project_task_tree_delete {
 
 	if {"" ne $err_msg} {
 	    ns_log Error "im_rest_project_task_tree_delete: $err_msg"
-	    doc_return 500 "text/plain" "{success:false, message: \"[im_quotejson $err_msg]\"}"
+	    doc_return 500 "text/plain" "{\"success\": false, \"message\": \"[im_quotejson $err_msg]\"}"
 	    return
 	}
     }
@@ -185,7 +185,7 @@ ad_proc im_rest_project_task_tree_create {
     # No project_id!
     if {"" != $project_id && [db_string exists_p "select count(*) from im_projects where project_id=:project_id"]} {
 	ns_log Error "im_rest_project_task_tree_create: Create failed, project_id=$project_id already exists. JSON data: $var_hash_list"
-	doc_return 409 "text/plain" "{success:false, message: 'Create failed, project_id=$project_id already exists. JSON data: [im_quotejson $var_hash_list]'}"
+	doc_return 409 "text/plain" "{\"success\": false, \"message\": \"Create failed, project_id=$project_id already exists. JSON data: [im_quotejson $var_hash_list]\"}"
 	return
     }
 
@@ -193,7 +193,7 @@ ad_proc im_rest_project_task_tree_create {
     if {[info exists var_hash(parent_id)]} { set parent_id $var_hash(parent_id) }
     if {"" == $parent_id} {
 	ns_log Error "im_rest_project_task_tree_create: Create failed, no parent_id specified for new task in post data: $var_hash_list"
-	doc_return 400 "text/plain" "{success:false, message: 'Create failed, no parent_id specified for new task in post data: [im_quotejson $var_hash_list]'}"
+	doc_return 400 "text/plain" "{\"success\": false, \"message\": \"Create failed, no parent_id specified for new task in post data: [im_quotejson $var_hash_list]\"}"
 	return
     }
     
@@ -201,7 +201,7 @@ ad_proc im_rest_project_task_tree_create {
     ${parent_object_type}_permissions $current_user_id $parent_id view read write admin
     if {!$write} {
 	ns_log Error "im_rest_project_task_tree_create: No permissions to write to parent_id=$parent_id for user=$current_user_id"
-	doc_return 401 "text/plain" "{success:false, message: 'No permissions to write to parent_id=$parent_id for user=$current_user_id'}"
+	doc_return 401 "text/plain" "{\"success\": false, \"message\": \"No permissions to write to parent_id=$parent_id for user=$current_user_id\"}"
 	return
     }
 
