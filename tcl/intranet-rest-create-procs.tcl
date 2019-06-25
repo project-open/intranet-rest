@@ -1485,6 +1485,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task_dependency {
     if {!$add_p} {
 	return [im_rest_error -format $format -http_status 403 -message "User #$rest_user_id does not have the right to create timesheet task dependencies"] 
     }
+    # ToDo: Permissions should depend on write permissions on task_id_one and task_id_two...
 
     # Extract a key-value list of variables from JSON POST request
     array set hash_array [im_rest_parse_json_content -rest_otype $rest_otype -format $format -content $content]
@@ -1492,7 +1493,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task_dependency {
 
     # Set default variables
     if {![info exists hash_array(dependency_status_id)] || "" == $hash_array(dependency_status_id) } { set hash_array(dependency_status_id) 9740 }
-    if {![info exists hash_array(dependency_type_id)] || "" == $hash_array(dependency_type_id) } { set hash_array(dependency_type_id) 9650 }
+    if {![info exists hash_array(dependency_type_id)] || "" == $hash_array(dependency_type_id) } { set hash_array(dependency_type_id) 9662 }
     if {![info exists hash_array(difference)] || "" == $hash_array(difference) } { set hash_array(difference) 0 }
     if {![info exists hash_array(hardness_type_id)]} { set hash_array(hardness_type_id) "" }
 
