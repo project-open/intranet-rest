@@ -303,6 +303,7 @@ ad_proc im_rest_project_task_tree_predecessors {
 	set succ_id $object_hash(succ_id)
 	set type_id $object_hash(type_id)
 	set diff $object_hash(diff)
+        set diff_format_id $object_hash(diff_format_id)
 
 	# Create a list of all predecessor tasks
 	lappend pred_list $pred_id
@@ -320,9 +321,9 @@ ad_proc im_rest_project_task_tree_predecessors {
 	    # Add the dude
 	    set insert_sql "
 		insert into im_timesheet_task_dependencies (
-			task_id_two, task_id_one, dependency_type_id, difference
+			task_id_two, task_id_one, dependency_type_id, difference, difference_format_id
 		) values (
-			:pred_id, :succ_id, :type_id, :diff
+			:pred_id, :succ_id, :type_id, :diff, :diff_format_id
 		)
 	    "
 	    db_dml dep_insert $insert_sql
@@ -332,6 +333,7 @@ ad_proc im_rest_project_task_tree_predecessors {
 	    set update_sql "
 		update im_timesheet_task_dependencies set
 			difference = :diff,
+                        difference_format_id = :diff_format_id,
 			dependency_type_id = :type_id
 		where	task_id_two = :pred_id and
 			task_id_one = :succ_id
