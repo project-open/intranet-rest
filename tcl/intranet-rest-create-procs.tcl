@@ -2135,7 +2135,8 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
 			preference_value = :preference_value
 		where	preference_id = :rest_oid
         "
-	im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $preference_status_id -type_id $preference_type_id -action after_update
+	# Fraber 2019-10-17: Disable audit of sencha_preferences
+	# im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $preference_status_id -type_id $preference_type_id -action after_update
     } else {
 	# Create a new preference
 	if {[catch {
@@ -2154,7 +2155,8 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
 	    return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
 	}
 
-	im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $preference_status_id -type_id $preference_type_id -action after_create
+	# Fraber 2019-10-17: Disable audit of sencha_preferences	
+	# im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $preference_status_id -type_id $preference_type_id -action after_create
     }
    
     set hash_array(rest_oid) $rest_oid
