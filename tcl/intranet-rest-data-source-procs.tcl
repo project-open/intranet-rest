@@ -304,6 +304,7 @@ ad_proc im_rest_project_task_tree_predecessors {
 	set type_id $object_hash(type_id)
 	set diff 0.0
 	if {[info exists object_hash(diff)]} { set diff $object_hash(diff) }
+	if {"null" eq $diff} { set diff 0.0 }
 	set diff_format_id 9807
 	if {[info exists object_hash(diff_format_id)]} { set diff_format_id $object_hash(diff_format_id) }
 
