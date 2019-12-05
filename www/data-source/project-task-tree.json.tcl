@@ -202,8 +202,9 @@ db_multirow task_multirow task_list $projects_sql {
 
 # Sort the tree according to the specified sort order
 # "sort_order" is an integer, so we have to tell the sort algorithm to use integer sorting
-ns_log Notice "project-tree.json.tcl: starting to sort multirow"
+ns_log Notice "project-tree.json.tcl: Starting to sort multirow"
 multirow_sort_tree -integer task_multirow project_id parent_id sort_order
+ns_log Notice "project-tree.json.tcl: Finished to sort multirow"
 
 set task_json ""
 set ctr 0
