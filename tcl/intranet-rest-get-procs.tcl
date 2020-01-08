@@ -807,6 +807,15 @@ ad_proc -private im_rest_get_im_categories {
     }
     if {"" != $where_clause} { set where_clause "and $where_clause" }
 
+    # Include disabled categories? Default is false
+    set include_disabled_p 0
+    if {[info exists query_hash(include_disabled_p)]} {
+	set v $query_hash(include_disabled_p)
+	if {"1" eq $v} { set include_disabled_p 1}
+    }
+    set include_disabled_sql ""
+    if {$include_disabled_p} { set include_disabled_sql "OR 1=1" }
+
     # Select SQL: Pull out categories.
     set sql "
 	select	c.category_id as rest_oid,
@@ -814,7 +823,7 @@ ad_proc -private im_rest_get_im_categories {
 		im_category_path_to_category(c.category_id) as tree_sortkey,
 		c.*
 	from	im_categories c
-	where	(c.enabled_p is null OR c.enabled_p = 't')
+	where	(c.enabled_p is null OR c.enabled_p = 't' $include_disabled_sql)
 		$where_clause
 	order by category_id
     "
