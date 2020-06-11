@@ -24,9 +24,7 @@ ad_proc -public im_rest_doc_return {args} {
     ad_http_cache_control
 
     # find out if we should compress or not
-    set query_set [ns_conn form]
-    set gzip_p [ns_set get $query_set gzip_p]
-    ns_log Notice "im_rest_doc_return: gzip_p=$gzip_p"
+    set gzip_p [im_opt_val -limit_to alnum gzip_p]
 
     # Return the data
     if {"1" == $gzip_p} {
@@ -93,13 +91,13 @@ ad_proc -private im_rest_debug_headers {
     
     set header_vars [ns_conn headers]
     foreach var [ad_ns_set_keys $header_vars] {
-	set value [ns_set get $header_vars $var]
+	set value [im_opt_val -limit_to nohtml $var]
 	append debug "header: $var=$value\n"
     }
     
     set form_vars [ns_conn form]
     foreach var [ad_ns_set_keys $form_vars] {
-	set value [ns_set get $form_vars $var]
+	set value [im_opt_val -limit_to nohtml $var]
 	append debug "form: $var=$value\n"
     }
     
@@ -636,7 +634,7 @@ ad_proc -public im_rest_error {
 
 
 ad_proc -public im_rest_get_content {} {
-    There's no [ns_conn content] so this is a hack to get the content of the REST request. 
+    This is a hack to get the content of the REST request. 
     @return string - the request
     @author Dave Bauer
 } {
