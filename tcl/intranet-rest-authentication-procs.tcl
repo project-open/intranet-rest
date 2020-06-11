@@ -161,7 +161,7 @@ ad_proc -private im_rest_authenticate {
 
     # internal debugging: Try to track down issue #42853
     if {[im_table_exists crm_online_interactions]} {
-        set user_system_id [im_opt_val system_id]
+        set user_system_id [im_opt_val -limit_to nohtml system_id]
         if {"" ne $user_system_id} {
             crm_basic_interaction -interaction_type_id 3235 -system_id $user_system_id -message [im_url_with_query]
         }

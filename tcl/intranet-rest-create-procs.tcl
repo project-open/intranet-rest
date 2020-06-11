@@ -591,10 +591,10 @@ ad_proc -private im_rest_post_object_type_im_company {
 	ns_log Notice "im_rest_post_object_type_$rest_otype: Create new main_office_id for company"
 
 	# Make sure all important fields are somehow defined
-	if {![info exists office_name] || "" == $office_name} { set office_name "[im_opt_val company_name] Main Office" }
+	if {![info exists office_name] || "" == $office_name} { set office_name "[im_opt_val -limit_to nohtml company_name] Main Office" }
 	if {![info exists office_path] || "" == $office_path} { 
 	    # Take company_name, make it lower and replace any strange chars with "_"
-	    set office_path [string tolower [im_opt_val company_name]]
+	    set office_path [string tolower [im_opt_val -limit_to nohtml company_name]]
 	    regsub -all {[^a-z0-9]} $office_path "_" office_path
 	}
 	if {![info exists office_status_id] || "" == $office_status_id} { set office_status_id [im_office_status_active] }
@@ -1389,12 +1389,12 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
 	if {![info exists $var]} { 
 	    return [im_rest_error -format $format -http_status 406 -message "Variable '$var' not specified. The following variables are required: $required_vars"] 
 	}
-	
+
 	# Fix timestamp format between JavaScript and PostgreSQL 8.4/9.x
 	# Wed Jul 23 2014 19:23:26 GMT+0200 (Romance Daylight Time)
 	switch $var {
 	    interval_start - interval_end {
-		set val [im_rest_normalize_timestamp [im_opt_val $var]]
+		set val [im_rest_normalize_timestamp [im_opt_val -limit_to nohtml $var]]
 		set $var $val
 		set hash_array($var) $val
 	    }
