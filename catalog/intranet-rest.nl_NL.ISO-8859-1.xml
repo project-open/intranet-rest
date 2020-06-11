@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<message_catalog package_key="intranet-rest" locale="nl_NL" charset="ISO-8859-1">
+
+  <msg key="REST_API">REST API</msg>
+  <msg key="REST_Category_Type">REST Type categorie</msg>
+  <msg key="REST_Group_Memberships">REST Groeplidmaatschappen</msg>
+  <msg key="REST_My_Hours">REST Mijn uren</msg>
+  <msg key="REST_My_Timesheet_Projects">REST Mijn tijdlijst project</msg>
+  <msg key="REST_My_Timesheet_Projects_and_Hours">REST Mijn tijdlijst projecten en uren</msg>
+  <msg key="REST_Object_Permissions">REST Object rechten</msg>
+  <msg key="REST_System_Reports">REST Systeem rapporten</msg>
+</message_catalog>
