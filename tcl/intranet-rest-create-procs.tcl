@@ -1212,7 +1212,7 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
     if {[catch {
 
 	set rest_oid [db_string new_invoice_item "select im_invoice_item__new (
-			null, 'im_invoice_item', now(), :current_user_id, '[ad_conn peeraddr]', null,
+			null, 'im_invoice_item', now(), :rest_user_id, '[ad_conn peeraddr]', null,
 			:item_name, :invoice_id, :sort_order,
 			0, [im_uom_unit], 0, 'EUR',
 			[im_invoice_item_type_default], [im_invoice_item_status_active]
