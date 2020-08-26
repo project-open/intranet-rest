@@ -36,7 +36,7 @@ ad_proc -private im_rest_get_object_type {
     if {[info exists query_hash(deref_p)]} { set deref_p $query_hash(deref_p) }
     im_security_alert_check_integer -location "im_rest_get_object: deref_p" -value $deref_p
 
-    set base_url "[im_rest_system_url]/intranet-rest"
+    set base_url "/intranet-rest"
 
     set chars_to_be_escaped_list [list \
 				      "\"" "\\\"" \\ \\\\ \b \\b \f \\f \n \\n \r \\r \t \\t \
@@ -265,7 +265,7 @@ ad_proc -private im_rest_get_object_type {
 	        set url "$base_url/$rest_otype/$rest_oid"
 		append result "<tr>
 			<td>$rest_oid</td>
-			<td><a href=\"$url?format=html\">$object_name</a>
+			<td><a href=\"$url?format=json\">$object_name</a>
 		</tr>\n" 
 	    }
 	}
