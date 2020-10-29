@@ -152,6 +152,17 @@ set valid_vars [util_memoize [list im_rest_object_type_columns -deref_p 0 -rest_
 set valid_vars [lsort -unique $valid_vars]
 
 
+# Get a list of variables containing a date
+# We will cut off the time-zone part of the value futher below...
+set date_vars [db_list date_vars "
+	select	lower(column_name) 
+	from	user_tab_columns 
+	where	lower(table_name) in ('acs_objects', 'im_biz_objects', 'im_projects', 'im_timesheet_tasks') and 
+		lower(data_type) in ('date', 'timestamptz', 'timestamp', 'time_stamp', 'abstime')
+	order by column_name
+"]
+
+
 # --------------------------------------------
 # Main hierarchical SQL
 #
@@ -291,8 +302,14 @@ ${indent}\texpanded:$expanded,
 	# Skip xml_* variables (only used by MS-Project)
 	if {[regexp {^xml_} $var match]} { continue }
 
-	# Append the value to the JSON output
+	# Get the value of the local variable containing the database result
 	set value [set $var]
+
+	# Cut off the time-zone information for dates, time-stamps etc.
+	# So the client will get data without time zone.
+	if {$var in $date_vars} { set value [string range $value 0 18] }
+
+	# Append the value to the JSON output
 	set quoted_value [string map $quoted_char_map $value]
 	append task_json "${indent}\t$var:\"$quoted_value\",\n"
     }
