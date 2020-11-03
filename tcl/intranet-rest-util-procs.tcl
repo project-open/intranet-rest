@@ -76,7 +76,6 @@ ad_proc -private im_rest_header_extra_stuff {
 	<script type='text/javascript' src='/intranet/js/rounded_corners.inc.js'></script>
 	<script type='text/javascript' src='/resources/acs-subsite/core.js'></script>
 	<script type='text/javascript' src='/intranet/js/smartmenus/jquery.smartmenus.min.js'></script>
-	<script type='text/javascript' src='/intranet/js/style.saltnpepper.js'></script>
     "
 }
 
