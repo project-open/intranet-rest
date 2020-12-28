@@ -79,7 +79,7 @@ if {[catch {
 
 # Advance %completed.
 # This is actually duplicate and possibly inconsistent, because
-# because the JavaScript GanttEditor already calculated the
+# because the JS GanttEditor already calculated the
 # percentage. Let's hope both number are equal...
 #
 # However, we need to call this in order to update the main

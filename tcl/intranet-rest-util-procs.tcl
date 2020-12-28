@@ -693,7 +693,7 @@ ad_proc -public im_rest_parse_json_content {
 }
 
 ad_proc -public im_rest_normalize_timestamp { date_string } {
-    Reformat JavaScript date/timestamp format to suit PostgreSQL 8.4/9.x
+    Reformat JS date/timestamp format to suit PostgreSQL 8.4/9.x
     @author Frank Bergmann
 } {
     set str $date_string
