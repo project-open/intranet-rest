@@ -385,7 +385,7 @@ switch $format {
 	    set wiki_key "object_type_$object_type"
 	    set wiki "Wiki"
 	    regsub -all {_} $object_type {-} object_type_dashes
-	    set object_wiki_url "http://www.project-open.com/en/object-type-$object_type_dashes"
+	    set object_wiki_url "https://www.project-open.com/en/object-type-$object_type_dashes"
 	    if {![info exists wiki_hash($wiki_key)]} {
 		set wiki ""
 		set object_wiki_url ""

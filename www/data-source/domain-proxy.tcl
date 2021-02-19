@@ -14,7 +14,7 @@ ad_page_contract {
 # Security & Permissions
 #
 
-if {![regexp {^http://www\.project-open\.[a-z]+} $url match]} {
+if {![regexp {^https://www\.project-open\.[a-z]+} $url match]} {
     ad_return_complaint 1 "Domain-proxy: This proxy can relay information only from project-open.* domains"
     ad_script_abort
 }
