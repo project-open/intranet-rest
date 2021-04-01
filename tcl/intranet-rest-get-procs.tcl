@@ -421,16 +421,23 @@ ad_proc -private im_rest_get_im_hours {
     set owner_perm_sql "and h.user_id = :rest_user_id"
     if {$rest_otype_read_all_p} { set owner_perm_sql "" }
 
+
+    set deref_p 0
+    if {[info exists query_hash(deref_p)]} { set deref_p $query_hash(deref_p) }
+   
     # -------------------------------------------------------
     # Check if there is a where clause specified in the URL and validate the clause.
     set where_clause ""
     if {[info exists query_hash(query)]} { set where_clause $query_hash(query)}
 
     # Determine the list of valid columns for the object type
-    set valid_vars {hour_id user_id project_id day hours days note internal_note cost_id conf_object_id invoice_id material_id}
+    set valid_vars {hour_id user_id main_project_id project_id day hours days note internal_note cost_id conf_object_id invoice_id material_id}
 
-
-
+    # Manual implementation of dereferenced variables
+    if {$deref_p eq "1"} {
+	lappend valid_vars "project_id_deref"
+    }
+    
     # -------------------------------------------------------
     # Check if there are "valid_vars" specified in the HTTP header
     # and add these vars to the SQL clause
@@ -455,7 +462,14 @@ ad_proc -private im_rest_get_im_hours {
 			im_project_name_from_id(h.project_id) || 
 			day::date || ', ' || ' - ' || 
 			h.hours || ')' as object_name,
-		h.*
+		h.*,
+		(select p.project_name from im_projects p where p.project_id = h.project_id) as project_id_deref,
+		(select	main_p.project_id
+		from	im_projects p,
+			im_projects main_p
+		where	p.project_id = h.project_id and
+			main_p.tree_sortkey = tree_root_key(p.tree_sortkey)
+		) as main_project_id
 	from	im_hours h
 	where	1=1
 		$owner_perm_sql
