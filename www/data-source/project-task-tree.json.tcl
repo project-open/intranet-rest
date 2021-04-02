@@ -21,6 +21,16 @@ set root_project_id $project_id
 if {"" ne $node && [string is integer $node]} { set root_project_id $node }
 ns_log Notice "project-task-tree.json: node=$node, main_project_id=$main_project_id, root_project_id=$root_project_id, query_hash_pairs=$query_hash_pairs"
 
+
+# --------------------------------------------
+# Return an empty tree for project_id == 0 to avoid errors
+#
+if {0 eq $project_id} {
+    set task_json "\]"
+    ad_return_template
+    return
+}
+
 # --------------------------------------------
 # Security & Permissions
 #
