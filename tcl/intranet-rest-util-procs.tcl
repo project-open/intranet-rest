@@ -715,7 +715,7 @@ ad_proc -public im_quotejson { str } {
 } {
     regsub -all {\\} $str {\\\\} str
     regsub -all {"} $str {\"} str
-    regsub -all {'} $str {\'} str
+    # regsub -all {'} $str {\'} str
     regsub -all {\n} $str {\\n} str
     regsub -all {\r} $str {\\r} str
     regsub -all {\t} $str {\\t} str
