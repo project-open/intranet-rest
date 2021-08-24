@@ -125,6 +125,48 @@ db_foreach invoice $invoice_sql {
 
 
 # --------------------------------------------
+# Baselines:
+#
+
+# Baselines can be installed or not...
+if {[im_table_exists im_baselines]} {
+    # Get the first active baseline
+    array set baseline_hash {}
+    set baseline_id [db_string first_baseline "select min(baseline_id) from im_baselines where baseline_project_id = :main_project_id" -default 0]
+    set baseline_var_map_list {start_date start end_date end}
+    array set baseline_var_map $baseline_var_map_list
+    set baseline_vars [array names baseline_var_map]
+    array set baseline_hash {}
+
+    set baseline_sql "
+    	select	*
+	from	im_audits a,
+		im_baselines b
+	where	a.audit_baseline_id = b.baseline_id and
+		b.baseline_project_id = :main_project_id
+	order by b.baseline_id, audit_id
+    "
+    # ad_return_complaint 1 [im_ad_hoc_query -format html $baseline_sql]
+    db_foreach baselines $baseline_sql {
+	
+	# Create a hash with baseline id -> name
+	set baseline_hash($baseline_id) $baseline_name
+
+	# Writing audit values into a hash.
+	set values [split $audit_value "\n"]
+	foreach value $values {
+	    set value_parts [split $value "\t"]
+	    lassign $value_parts key val
+	    if {$key in $baseline_vars} {
+		set k "$baseline_id-$audit_object_id-$key"
+		set baseline_value_hash($k) $val
+	    }
+	}
+    }
+    # ad_return_complaint 1 [join [array get baseline_value_hash] "<br>"]
+}
+
+# --------------------------------------------
 # Get the list of projects that should not be displayed
 # Currently these are projects marked as "deleted".
 # We now also want to show "normal projects" / subprojects.
@@ -308,6 +350,23 @@ ${indent}\tinvoices:\[[join $invoices ", "]\],
 ${indent}\tlogged_hours:$logged_hours,
 ${indent}\texpanded:$expanded,
 "
+    # Create Baseline structure: baselines {'bid1': {'start_date': "...", 'end_date': "..."}, 'bid2': {...}}
+    set b_json_list [list]
+    foreach baseline_id [lsort -integer [array names baseline_hash]] {
+	# ad_return_complaint 1 $baseline_id
+	set json_list [list]
+	foreach baseline_var $baseline_vars {
+	    set k "$baseline_id-$project_id-$baseline_var"
+	    if {[info exists baseline_value_hash($k)]} {
+		set val $baseline_value_hash($k)
+		lappend json_list "'$baseline_var': '$val'"
+	    }
+	}
+	set b_json "'$baseline_id': {[join $json_list ", "]}"
+	lappend b_json_list $b_json
+    }
+    append task_json "${indent}\tbaselines: {[join $b_json_list ", "]},\n"
+
     foreach var $valid_vars {
 	# Skip xml_* variables (only used by MS-Project)
 	if {[regexp {^xml_} $var match]} { continue }
