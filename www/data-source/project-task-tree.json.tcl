@@ -49,9 +49,14 @@ set default_effort_driven_type_id [parameter::get_from_package_key -package_key 
 # --------------------------------------------
 # Task dependencies: Collect before the main loop
 # predecessor_hash: The list of predecessors for each task
+set default_dependency_type_id [im_timesheet_task_dependency_type_finish_to_start]
 set task_dependencies_sql "
-	select	distinct ttd.*,
-                coalesce(ttd.difference_format_id, 9807) as diff_format_id,     -- 9807=Day for formatting lag time
+	select distinct
+		ttd.dependency_id,
+		ttd.task_id_one,
+		ttd.task_id_two,
+		coalesce(ttd.dependency_type_id, :default_dependency_type_id) as dependency_type_id,
+		coalesce(ttd.difference_format_id, 9807) as diff_format_id,     -- 9807=Day for formatting lag time
 		coalesce(ttd.difference, 0.0) as diff
 	from	im_projects main_p,
 		im_projects p,
