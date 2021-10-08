@@ -104,6 +104,7 @@ ad_proc -private im_rest_post_object_type_im_project {
 			-project_status_id  	$hash_array(project_status_id) \
 	]
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype_pretty: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -113,6 +114,7 @@ ad_proc -private im_rest_post_object_type_im_project {
 	    -rest_oid $rest_oid \
 	    -hash_array [array get hash_array]
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype_pretty: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -228,7 +230,6 @@ ad_proc -private im_rest_post_object_type_im_ticket {
 
     if {[catch {
 	db_transaction {
-
 	    set rest_oid [im_ticket::new \
 			      -ticket_sla_id $parent_id \
 			      -ticket_name $project_name \
@@ -243,7 +244,7 @@ ad_proc -private im_rest_post_object_type_im_ticket {
 
 	}
     } err_msg]} {
-	ns_log Notice "im_rest_post_object_type_im_ticket: Error creating $rest_otype_pretty: '$err_msg'"
+	ns_log Error "Error creating $rest_otype_pretty: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -254,7 +255,7 @@ ad_proc -private im_rest_post_object_type_im_ticket {
 	    -hash_array [array get hash_array]
 
     } err_msg]} {
-	ns_log Notice "im_rest_post_object_type_im_ticket: Error creating $rest_otype_pretty during update: '$err_msg'"
+	ns_log Error "Error creating $rest_otype_pretty during update: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -399,7 +400,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 	    "]
 	}
     } err_msg]} {
-	ns_log Notice "im_rest_post_object_type_$rest_otype: Error creating $rest_otype_pretty: '$err_msg'"
+	ns_log Error "Error creating $rest_otype_pretty: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -411,6 +412,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
 	    -hash_array [array get hash_array]
 
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype_pretty: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
     
@@ -496,6 +498,7 @@ ad_proc -private im_rest_post_object_type_im_trans_task {
 		)
 	"]
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype_pretty: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -506,6 +509,7 @@ ad_proc -private im_rest_post_object_type_im_trans_task {
 	    -hash_array [array get hash_array]
 
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype_pretty: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -618,6 +622,7 @@ ad_proc -private im_rest_post_object_type_im_company {
 		-hash_array [array get hash_array]
 	    
 	} err_msg]} {
+	    ns_log Error "Error creating $rest_otype: '$err_msg'"
 	    return [im_rest_error -format $format -http_status 406 -message "Error updating im_office: '$err_msg'."]
 	}
 
@@ -637,7 +642,6 @@ ad_proc -private im_rest_post_object_type_im_company {
 	set hash_array(company_type_id) $company_type_id
     }
 
-
     if {[catch {
 	set rest_oid [db_string new_company "
 		select im_company__new (
@@ -655,6 +659,7 @@ ad_proc -private im_rest_post_object_type_im_company {
 		)
 	"]
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -665,6 +670,7 @@ ad_proc -private im_rest_post_object_type_im_company {
 	    -hash_array [array get hash_array]
 
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -741,10 +747,8 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
     }
 
     if {[catch {
-
 	set start_date_sql [template::util::date get_property sql_timestamp $start_date]
 	set end_date_sql [template::util::date get_property sql_timestamp $end_date]
-
 	set rest_oid [db_string new_absence "
 		SELECT im_user_absence__new(
 			null,
@@ -779,6 +783,7 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 		where object_id = :rest_oid
 	"
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -789,6 +794,7 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 	    -hash_array [array get hash_array]
 
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -980,6 +986,7 @@ ad_proc -private im_rest_post_object_type_user {
 	    -rest_oid $new_user_id \
 	    -hash_array [array get hash_array]
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1084,6 +1091,7 @@ ad_proc -private im_rest_post_object_type_im_invoice {
 		)
 	"]
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1094,6 +1102,7 @@ ad_proc -private im_rest_post_object_type_im_invoice {
 	    -hash_array [array get hash_array]
 
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1210,7 +1219,6 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
     }
 
     if {[catch {
-
 	set rest_oid [db_string new_invoice_item "select im_invoice_item__new (
 			null, 'im_invoice_item', now(), :rest_user_id, '[ad_conn peeraddr]', null,
 			:item_name, :invoice_id, :sort_order,
@@ -1219,6 +1227,7 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
 	)"]
 
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1229,6 +1238,7 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
 	    -hash_array [array get hash_array]
 
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1326,6 +1336,7 @@ ad_proc -private im_rest_post_object_type_im_hour {
 		)
 	"
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1336,6 +1347,7 @@ ad_proc -private im_rest_post_object_type_im_hour {
 	    -hash_array [array get hash_array]
 
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1440,6 +1452,7 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
 		)
 	"
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1449,6 +1462,7 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
 	    -rest_oid $rest_oid \
 	    -hash_array [array get hash_array]
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1459,9 +1473,6 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     set hash_array(interval_id) $rest_oid
     return [array get hash_array]
 }
-
-
-
 
 
 # --------------------------------------------------------
@@ -1550,6 +1561,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task_dependency {
 		)
 	"
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1559,6 +1571,7 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task_dependency {
 	    -rest_oid $rest_oid \
 	    -hash_array [array get hash_array]
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -1643,6 +1656,7 @@ ad_proc -private im_rest_post_object_type_im_note {
 		)
 	"]
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
    
@@ -1729,6 +1743,7 @@ ad_proc -private im_rest_post_object_type_membership_rel {
 		)
 	"]
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
    
@@ -1880,6 +1895,7 @@ ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
 		)
 	"]
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
    
@@ -1964,6 +1980,7 @@ ad_proc -private im_rest_post_object_type_im_key_account_rel {
 		)
 	"]
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -2047,6 +2064,7 @@ ad_proc -private im_rest_post_object_type_im_company_employee_rel {
 		)
 	"]
     } err_msg]} {
+	ns_log Error "Error creating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
     }
 
@@ -2152,6 +2170,7 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
 		)
 	    "]
 	} err_msg]} {
+	    ns_log Notice "im_rest_post_object_type_im_sencha_preference: Error creating im_sencha_preference: '$err_msg'"
 	    return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
 	}
 
@@ -2250,6 +2269,7 @@ ad_proc -private im_rest_post_object_type_im_sencha_column_config {
 		)
 	    "]
 	} err_msg]} {
+	    ns_log Error "Error creating $rest_otype: '$err_msg'"
 	    return [im_rest_error -format $format -http_status 406 -message "Error creating $rest_otype_pretty: '$err_msg'."]
 	}
     }
@@ -2260,6 +2280,7 @@ ad_proc -private im_rest_post_object_type_im_sencha_column_config {
 	    -rest_oid $rest_oid \
 	    -hash_array [array get hash_array]
     } err_msg]} {
+	ns_log Error "Error updating $rest_otype: '$err_msg'"
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
