@@ -14,20 +14,22 @@ ad_page_contract {
 # Security & Permissions
 #
 
-if {![regexp {^https://www\.project-open\.[a-z]+} $url match]} {
-    ad_return_complaint 1 "Domain-proxy: This proxy can relay information only from project-open.* domains"
-    ad_script_abort
-}
-
 ns_log Notice "/intranet-rest/data-source/domain-proxy.tcl: url=$url"
+set json ""
+if {![regexp {^https?://www\.project-open\.net/} $url match]} {
+    set json "{\"success\": false, \"message\": \"Domain-proxy: This proxy can relay information only from https://*.project-open.net domains\"}"
+    # ad_return_complaint 1 "Domain-proxy: This proxy can relay information only from project-open.* domains"
+    # ad_script_abort
+}
 
 
 # --------------------------------------------
 # Fetch and return the page
 #
-if {[catch {
-    set json [im_httpget $url]
-} err_msg]} {
-    set json "{\"success\": false, \"message\": \"Error message: $err_msg\"}"
+if {"" eq $json} {
+    if {[catch {
+	set json [im_httpget $url]
+    } err_msg]} {
+	set json "{\"success\": false, \"message\": \"Error message: $err_msg\"}"
+    }
 }
-
