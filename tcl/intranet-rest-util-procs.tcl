@@ -612,7 +612,7 @@ ad_proc -public im_rest_error {
 
     switch $format {
 	html { 
-	    doc_return 200 "text/html" "
+	    doc_return $http_status "text/html" "
 		[im_header $page_title [im_rest_header_extra_stuff]][im_navbar]
 		<p>$status_message</p>
 		<pre>[ns_quotehtml $message]</pre>
@@ -621,13 +621,14 @@ ad_proc -public im_rest_error {
 	}
 	json {  
 	    set result "{\"success\": false,\n\"message\": \"[im_quotejson $message]\"\n}"
-	    doc_return 200 "application/json" $result
+	    doc_return $http_status "application/json" $result
 	}
 	default {
 	     ad_return_complaint 1 "Invalid format1: '$format'"
 	}
     }
 
+    ns_log Notice "im_rest_error: before ad_script_abort"
     ad_script_abort
 }
 
