@@ -124,7 +124,12 @@ ad_proc -private im_rest_post_object_type_im_project {
     # Add the creating user as a member, so that he's got the right to modify the project if he is not a privileged user
     im_biz_object_add_role $rest_user_id $rest_oid [im_biz_object_role_project_manager]
     
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
+    set hash_array(project_id) $rest_oid
+
     set hash_array(rest_oid) $rest_oid
+
     return [array get hash_array]
 }
 
@@ -263,8 +268,14 @@ ad_proc -private im_rest_post_object_type_im_ticket {
     im_audit -object_id $rest_oid -action after_create
     
     ns_log Notice "im_rest_post_object_type_im_ticket: Successfully created object with object_id=$rest_oid"
-    set hash_array(rest_oid) $rest_oid
+
+
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(ticket_id) $rest_oid
+
+    set hash_array(rest_oid) $rest_oid
+
     return [array get hash_array]
 }
 
@@ -418,6 +429,8 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task {
     
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(task_id) $rest_oid
     return [array get hash_array]
@@ -515,6 +528,8 @@ ad_proc -private im_rest_post_object_type_im_trans_task {
 
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
     
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(task_id) $rest_oid
     return [array get hash_array]
@@ -676,6 +691,8 @@ ad_proc -private im_rest_post_object_type_im_company {
 
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
     
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(company_id) $rest_oid
     return [array get hash_array]
@@ -800,6 +817,8 @@ ad_proc -private im_rest_post_object_type_im_user_absence {
 
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
     
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(absence_id) $rest_oid
     return [array get hash_array]
@@ -994,6 +1013,8 @@ ad_proc -private im_rest_post_object_type_user {
 
     set rest_oid $new_user_id
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(user_id) $rest_oid
     return [array get hash_array]
@@ -1108,6 +1129,8 @@ ad_proc -private im_rest_post_object_type_im_invoice {
 
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
     
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(invoice_id) $rest_oid
     return [array get hash_array]
@@ -1150,6 +1173,8 @@ ad_proc -private im_rest_post_object_type_im_trans_invoice {
 
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(invoice_id) $rest_oid
     return [array get hash_array]
@@ -1248,6 +1273,8 @@ ad_proc -private im_rest_post_object_type_im_invoice_item {
     # No audit here, invoice_item is not a real object
     # im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(item_id) $rest_oid
     return [array get hash_array]
@@ -1354,6 +1381,8 @@ ad_proc -private im_rest_post_object_type_im_hour {
     # Not a real object, so no audit!
     # im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(hour_id) $rest_oid
     return [array get hash_array]
@@ -1469,6 +1498,8 @@ ad_proc -private im_rest_post_object_type_im_hour_interval {
     # Not a real object, so no audit!
     # im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(interval_id) $rest_oid
     return [array get hash_array]
@@ -1533,6 +1564,9 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task_dependency {
     set rest_oid [db_string duplicate $dup_sql -default ""]
     if {"" != $rest_oid} {
 	ns_log Warning "im_rest_post_object_type_$rest_otype: duplicate dependency: task_id_one=$task_id_one, task_id_two=$task_id_two"
+
+	# Set values for Sencha ExtJS Store
+	set hash_array(id) $rest_oid
 	set hash_array(rest_oid) $rest_oid
 	set hash_array(dependency_id) $rest_oid
 	return [array get hash_array]
@@ -1575,6 +1609,8 @@ ad_proc -private im_rest_post_object_type_im_timesheet_task_dependency {
 	return [im_rest_error -format $format -http_status 406 -message "Error updating $rest_otype_pretty: '$err_msg'."]
     }
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(dependency_id) $rest_oid
     return [array get hash_array]
@@ -1662,8 +1698,10 @@ ad_proc -private im_rest_post_object_type_im_note {
    
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $note_status_id -type_id $note_type_id -action after_create
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
-    set hash_array(rel_id) $rest_oid
+    set hash_array(note_id) $rest_oid
     return [array get hash_array]
 }
 
@@ -1750,8 +1788,10 @@ ad_proc -private im_rest_post_object_type_im_attendance_interval {
     
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $attendance_status_id -type_id $attendance_type_id -action after_create
 
+    # Set the IDs for Sencha ExtJS store to write into the returned model
     set hash_array(rest_oid) $rest_oid
-    set hash_array(rel_id) $rest_oid
+    set hash_array(id) $rest_oid
+    set hash_array(attendance_id) $rest_oid
     return [array get hash_array]
 }
 
@@ -1837,6 +1877,8 @@ ad_proc -private im_rest_post_object_type_membership_rel {
    
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
     return [array get hash_array]
@@ -1904,6 +1946,8 @@ ad_proc -private im_rest_post_object_type_im_biz_object_member {
     set rest_oid [im_biz_object_add_role -current_user_id $rest_user_id -percentage $percentage $object_id_two $object_id_one $object_role_id]
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
     return [array get hash_array]
@@ -1989,6 +2033,8 @@ ad_proc -private im_rest_post_object_type_im_ticket_ticket_rel {
    
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
 
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
     return [array get hash_array]
@@ -2074,6 +2120,8 @@ ad_proc -private im_rest_post_object_type_im_key_account_rel {
 
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
    
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
     return [array get hash_array]
@@ -2158,6 +2206,8 @@ ad_proc -private im_rest_post_object_type_im_company_employee_rel {
 
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -action after_create
    
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
     set hash_array(rel_id) $rest_oid
     return [array get hash_array]
@@ -2266,7 +2316,10 @@ ad_proc -private im_rest_post_object_type_im_sencha_preference {
 	# im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $preference_status_id -type_id $preference_type_id -action after_create
     }
    
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
+    set hash_array(preference_id) $rest_oid
     return [array get hash_array]
 }
 
@@ -2374,7 +2427,10 @@ ad_proc -private im_rest_post_object_type_im_sencha_column_config {
 
     im_audit -user_id $rest_user_id -object_type $rest_otype -object_id $rest_oid -status_id $column_config_status_id -type_id $column_config_type_id -action after_create
    
+    # Set values for Sencha ExtJS Store
+    set hash_array(id) $rest_oid
     set hash_array(rest_oid) $rest_oid
+    set hash_array(column_config_id) $rest_oid
     return [array get hash_array]
 }
 
