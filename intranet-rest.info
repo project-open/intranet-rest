@@ -8,7 +8,7 @@
     <singleton-p>t</singleton-p>
     <auto-mount>intranet-rest</auto-mount>
 
-    <version name="5.1.0.0.0" url="https://www.project-open.net/download/apm/intranet-rest-5.1.0.0.0.apm">
+    <version name="5.2.0.0.0" url="https://www.project-open.net/download/apm/intranet-rest-5.2.0.0.0.apm">
         <owner url="mailto:frank.bergmann@project-open.com">Frank Bergmann</owner>
         <summary>Expose the ]project-open[ data-model as a Web Service in REST style</summary>
         <release-date>2016-11-15</release-date>
